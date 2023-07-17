@@ -3,6 +3,7 @@ import wave
 import matplotlib.pyplot as plt
 import os
 import numpy as np
+import sys
 
 path = os.getcwd() + '/Assets/' + 'wave.wav'
 wav_obj = wave.open(path)
@@ -16,16 +17,13 @@ l_channel = signal_array[0::2]
 r_channel = signal_array[1::2]
 times = np.linspace(0, n_samples/sample_freq, num=n_samples)
 
+plt.rcParams['figure.figsize'] = [30, 10]
 plt.figure(frameon=False)
-plt.rcParams['figure.figsize'] = [100, 100]
 plt.plot(times, l_channel)
 plt.xlim(0, t_audio)
 plt.axis('off')
 plt.savefig(os.getcwd() + '/Assets/GeneratedPlots/waveform.png', bbox_inches='tight', pad_inches=0)
 
 plt.figure(frameon=False)
-plt.rcParams['figure.figsize'] = [20, 100]
 plt.specgram(l_channel, Fs=sample_freq, vmin=-20, vmax=50)
-plt.xlim(0, t_audio)
-plt.axis('off')
 plt.savefig(os.getcwd() + '/Assets/GeneratedPlots/frequencySpectrum.png', bbox_inches='tight', pad_inches=0)

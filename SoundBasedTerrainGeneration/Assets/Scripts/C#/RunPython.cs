@@ -4,9 +4,40 @@ using UnityEngine;
 
 public class RunPython
 {
-    [MenuItem("ProcessAudio/GenerateWavformAndSpectrogram")]
-    static void RunEnsureNaming()
+    public static void RunWaveformAndSpectogramGenerator(string filename)
     {
-        PythonRunner.RunFile($"{Application.dataPath}/Scripts/Python/GenerateWaveform.py");
+        PythonRunner.RunString($@"
+
+            import UnityEngine;
+            import wave
+            import matplotlib.pyplot as plt
+            import os
+            import numpy as np
+            import sys
+
+            path = os.getcwd() + '/Assets/' + '{filename}.wav'
+            wav_obj = wave.open(path)
+            sample_freq = wav_obj.getframerate()
+            n_samples = wav_obj.getnframes()
+            t_audio = n_samples / sample_freq
+            n_channels = wav_obj.getnchannels()
+            signal_wave = wav_obj.readframes(n_samples)
+            signal_array = np.frombuffer(signal_wave, dtype = np.int16)
+            l_channel = signal_array[0::2]
+            r_channel = signal_array[1::2]
+            times = np.linspace(0, n_samples / sample_freq, num = n_samples)
+
+            plt.rcParams['figure.figsize'] = [90, 30]
+            plt.figure(frameon = False)
+            plt.plot(times, l_channel)
+            plt.xlim(0, t_audio)
+            plt.axis('off')
+            plt.savefig(os.getcwd() + '/Assets/GeneratedPlots/waveform.png', bbox_inches = 'tight', pad_inches = 0)
+
+            plt.figure(frameon = False)
+            plt.specgram(l_channel, Fs = sample_freq, vmin = -20, vmax = 50)
+            plt.savefig(os.getcwd() + '/Assets/GeneratedPlots/frequencySpectrum.png', bbox_inches = 'tight', pad_inches = 0)
+        
+        ");
     }
 }

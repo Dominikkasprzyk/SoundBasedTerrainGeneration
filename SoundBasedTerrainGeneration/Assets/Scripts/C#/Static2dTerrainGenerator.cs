@@ -5,11 +5,12 @@ using System.Linq;
 using UnityEngine;
 using UnityEngine.Tilemaps;
 
+[RequireComponent(typeof(MeshFilter))]
+[RequireComponent(typeof(MeshRenderer))]
 public class Static2dTerrainGenerator : TerrainGeneration
 {
     [Range(0, 2)]
     [SerializeField] private float scale = 1;
-    [SerializeField] private int width;
     [SerializeField] private int minStoneheight, maxStoneHeight;
     [SerializeField] private Tilemap dirtTilemap, grassTilemap, stoneTilemap;
     [SerializeField] private Tile dirt, grass, stone;
@@ -19,6 +20,7 @@ public class Static2dTerrainGenerator : TerrainGeneration
     private int min, max;
     private float previousScale;
     private int[] waveformArray;
+    private int width, height;
 
     void Start()
     {
@@ -33,9 +35,7 @@ public class Static2dTerrainGenerator : TerrainGeneration
         }
         if (Input.GetKeyDown(KeyCode.D))
         {
-            stoneTilemap.ClearAllTiles();
-            dirtTilemap.ClearAllTiles();
-            grassTilemap.ClearAllTiles();
+            //ClearTerrain();
         }
     }
 
@@ -45,8 +45,7 @@ public class Static2dTerrainGenerator : TerrainGeneration
         {
             if (waveformArray != null)
             {
-                ClearTerrain();
-                SpawnTiles();
+                UpdateTiles();
             }
             previousScale = scale;
         }
@@ -59,43 +58,65 @@ public class Static2dTerrainGenerator : TerrainGeneration
         grassTilemap.ClearAllTiles();
     }
 
+    private void UpdateTiles()
+    {
+
+    }
+
     private void SpawnTiles()
     {
-        int mean = min + ((max - min) / 2);
+        Vector3Int[] positions = new Vector3Int[width * height];
+        TileBase[] tileArray = new TileBase[positions.Length];
 
-        for (int x = 0; x < waveformArray.Length; x++)//This will help spawn a tile on the x axis
+        Debug.Log(width/50);
+        Debug.Log(height/50);
+
+        for (int i = 0; i< width; i++)
         {
-            int height = mean + (int)((waveformArray[x] - mean) * scale);
-
-            int minStoneSpawnDistance = height - minStoneheight;
-            int maxStoneSpawnDistance = height - maxStoneHeight;
-            int totalStoneSpawnDistance = Random.Range(minStoneSpawnDistance, maxStoneSpawnDistance);
-            //Perlin noise.
-            for (int y = 0; y < height; y++)//This will help spawn a tile on the y axis
+            for (int j = 0; j < height; j++)
             {
-                if (y < totalStoneSpawnDistance)
-                {
-                    //spawnObj(stone, x, y);
-                    stoneTilemap.SetTile(new Vector3Int(x, y, 0), stone);
-                }
-                else
-                {
-                    // spawnObj(dirt, x, y);
-                    dirtTilemap.SetTile(new Vector3Int(x, y, 0), dirt);
-                }
-
-            }
-            if (totalStoneSpawnDistance == height)
-            {
-                // spawnObj(stone, x, height);
-                stoneTilemap.SetTile(new Vector3Int(x, height, 0), stone);
-            }
-            else
-            {
-                //spawnObj(grass, x, height);
-                grassTilemap.SetTile(new Vector3Int(x, height, 0), grass);
+                //stoneTilemap.SetTile(new Vector3Int(i, j, 0), stone);
+                positions[(i * height) + j] = new Vector3Int(i, j, 0);
+                tileArray[(i * height) + j] = stone;
             }
         }
+
+        stoneTilemap.SetTiles(positions, tileArray);
+
+        //int mean = min + ((max - min) / 2);
+
+        //for (int x = 0; x < waveformArray.Length; x++)//This will help spawn a tile on the x axis
+        //{
+        //    int height = mean + (int)((waveformArray[x] - mean) * scale);
+
+        //    int minStoneSpawnDistance = height - minStoneheight;
+        //    int maxStoneSpawnDistance = height - maxStoneHeight;
+        //    int totalStoneSpawnDistance = Random.Range(minStoneSpawnDistance, maxStoneSpawnDistance);
+        //    for (int y = 0; y < height; y++)//This will help spawn a tile on the y axis
+        //    {
+        //        if (y < totalStoneSpawnDistance)
+        //        {
+        //            //spawnObj(stone, x, y);
+        //            stoneTilemap.SetTile(new Vector3Int(x, y, 0), stone);
+        //        }
+        //        else
+        //        {
+        //            // spawnObj(dirt, x, y);
+        //            dirtTilemap.SetTile(new Vector3Int(x, y, 0), dirt);
+        //        }
+
+        //    }
+        //    if (totalStoneSpawnDistance == height)
+        //    {
+        //        // spawnObj(stone, x, height);
+        //        stoneTilemap.SetTile(new Vector3Int(x, height, 0), stone);
+        //    }
+        //    else
+        //    {
+        //        //spawnObj(grass, x, height);
+        //        grassTilemap.SetTile(new Vector3Int(x, height, 0), grass);
+        //    }
+        //}
     }
 
     override protected void Generation()
@@ -104,14 +125,19 @@ public class Static2dTerrainGenerator : TerrainGeneration
 
         string waveformImage = PathCombine(Application.dataPath, "GeneratedPlots/waveform.png"); // Assign the waveform image in the Inspector
         waveformArray = ConvertWaveformImageToArray(LoadPNG(waveformImage));
-        SpawnTiles();
+        //SpawnTiles();
+
+        int[] test =
+            {1,2,1,2,3,4,5,4,3,2,1};
+
+        GenerateGraphMesh(waveformArray);
     }
 
     private int[] ConvertWaveformImageToArray(Texture2D image)
     {
         Color32[] pixels = image.GetPixels32();
-        int width = image.width;
-        int height = image.height;
+        width = image.width;
+        height = image.height;
 
         List<int> waveformList = new List<int>();
 
@@ -170,5 +196,55 @@ public class Static2dTerrainGenerator : TerrainGeneration
             tex.LoadImage(fileData); //..this will auto-resize the texture dimensions.
         }
         return tex;
+    }
+
+    void GenerateGraphMesh(int [] graphData)
+    {
+        if (graphData == null || graphData.Length == 0)
+        {
+            Debug.LogError("Graph data is empty!");
+            return;
+        }
+
+        int numVertices = graphData.Length * 2; // Two vertices per data point (y-axis and x-axis)
+        Vector3[] vertices = new Vector3[numVertices];
+        int[] triangles = new int[(graphData.Length - 1) * 6]; // Two triangles per data point
+
+        for (int i = 0; i < graphData.Length; i++)
+        {
+            float x = i;
+            float y = graphData[i];
+
+            // Vertex on the y-axis (value of the function)
+            vertices[i * 2] = new Vector3(x, y, 0);
+
+            // Vertex on the x-axis
+            vertices[i * 2 + 1] = new Vector3(x, 0, 0);
+
+            // Create triangles for the current data point (except for the last one)
+            if (i < graphData.Length - 1)
+            {
+                int triangleIndex = i * 6;
+                triangles[triangleIndex] = i * 2;
+                triangles[triangleIndex + 2] = (i + 1) * 2 + 1; // Reverse the winding order here
+                triangles[triangleIndex + 1] = (i + 1) * 2;
+
+                triangles[triangleIndex + 3] = i * 2;
+                triangles[triangleIndex + 5] = i * 2 + 1; // Reverse the winding order here
+                triangles[triangleIndex + 4] = (i + 1) * 2 + 1;
+            }
+        }
+
+        // Get the existing MeshFilter component
+        MeshFilter meshFilter = GetComponent<MeshFilter>();
+
+
+        // Create the mesh
+        Mesh mesh = new Mesh();
+        mesh.vertices = vertices;
+        mesh.triangles = triangles;
+
+        // Assign the generated mesh to the MeshFilter
+        meshFilter.mesh = mesh;
     }
 }

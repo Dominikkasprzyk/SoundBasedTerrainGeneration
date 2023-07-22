@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
@@ -9,114 +10,28 @@ using UnityEngine.Tilemaps;
 [RequireComponent(typeof(MeshRenderer))]
 public class Static2dTerrainGenerator : TerrainGeneration
 {
-    [Range(0, 2)]
-    [SerializeField] private float scale = 1;
-    [SerializeField] private int minStoneheight, maxStoneHeight;
-    [SerializeField] private Tilemap dirtTilemap, grassTilemap, stoneTilemap;
-    [SerializeField] private Tile dirt, grass, stone;
-    [Range(0, 100)]
-    [SerializeField] private float heightValue, smoothness;
+    [Range(0, 1)]
+    [SerializeField] private float smoothness = 0;
 
     private int min, max;
     private float previousScale;
     private int[] waveformArray;
-    private int width, height;
+    private int width, height, middlePoint;
+    private MeshFilter meshFilter;
+    private Vector3[] vertices;
 
     void Start()
     {
         Generation();
     }
 
-    private void Update()
-    {
-        if (Input.GetKeyDown(KeyCode.A))
-        {
-            Generation();
-        }
-        if (Input.GetKeyDown(KeyCode.D))
-        {
-            //ClearTerrain();
-        }
-    }
-
     private void OnValidate()
     {
-        if (scale != previousScale)
+        if (smoothness != previousScale)
         {
-            if (waveformArray != null)
-            {
-                UpdateTiles();
-            }
-            previousScale = scale;
+            UpdateMesh();
+            previousScale = smoothness;
         }
-    }
-
-    private void ClearTerrain()
-    {
-        stoneTilemap.ClearAllTiles();
-        dirtTilemap.ClearAllTiles();
-        grassTilemap.ClearAllTiles();
-    }
-
-    private void UpdateTiles()
-    {
-
-    }
-
-    private void SpawnTiles()
-    {
-        Vector3Int[] positions = new Vector3Int[width * height];
-        TileBase[] tileArray = new TileBase[positions.Length];
-
-        Debug.Log(width/50);
-        Debug.Log(height/50);
-
-        for (int i = 0; i< width; i++)
-        {
-            for (int j = 0; j < height; j++)
-            {
-                //stoneTilemap.SetTile(new Vector3Int(i, j, 0), stone);
-                positions[(i * height) + j] = new Vector3Int(i, j, 0);
-                tileArray[(i * height) + j] = stone;
-            }
-        }
-
-        stoneTilemap.SetTiles(positions, tileArray);
-
-        //int mean = min + ((max - min) / 2);
-
-        //for (int x = 0; x < waveformArray.Length; x++)//This will help spawn a tile on the x axis
-        //{
-        //    int height = mean + (int)((waveformArray[x] - mean) * scale);
-
-        //    int minStoneSpawnDistance = height - minStoneheight;
-        //    int maxStoneSpawnDistance = height - maxStoneHeight;
-        //    int totalStoneSpawnDistance = Random.Range(minStoneSpawnDistance, maxStoneSpawnDistance);
-        //    for (int y = 0; y < height; y++)//This will help spawn a tile on the y axis
-        //    {
-        //        if (y < totalStoneSpawnDistance)
-        //        {
-        //            //spawnObj(stone, x, y);
-        //            stoneTilemap.SetTile(new Vector3Int(x, y, 0), stone);
-        //        }
-        //        else
-        //        {
-        //            // spawnObj(dirt, x, y);
-        //            dirtTilemap.SetTile(new Vector3Int(x, y, 0), dirt);
-        //        }
-
-        //    }
-        //    if (totalStoneSpawnDistance == height)
-        //    {
-        //        // spawnObj(stone, x, height);
-        //        stoneTilemap.SetTile(new Vector3Int(x, height, 0), stone);
-        //    }
-        //    else
-        //    {
-        //        //spawnObj(grass, x, height);
-        //        grassTilemap.SetTile(new Vector3Int(x, height, 0), grass);
-        //    }
-        //}
     }
 
     override protected void Generation()
@@ -175,6 +90,9 @@ public class Static2dTerrainGenerator : TerrainGeneration
             }
         }
 
+        //middlePoint = min + ((max - min) / 2);
+        middlePoint = waveformList[0];
+
         return waveformList.ToArray();
     }
 
@@ -200,6 +118,8 @@ public class Static2dTerrainGenerator : TerrainGeneration
 
     void GenerateGraphMesh(int [] graphData)
     {
+        Debug.Log(waveformArray[0]);
+        Debug.Log(middlePoint);
         if (graphData == null || graphData.Length == 0)
         {
             Debug.LogError("Graph data is empty!");
@@ -207,7 +127,7 @@ public class Static2dTerrainGenerator : TerrainGeneration
         }
 
         int numVertices = graphData.Length * 2; // Two vertices per data point (y-axis and x-axis)
-        Vector3[] vertices = new Vector3[numVertices];
+        vertices = new Vector3[numVertices];
         int[] triangles = new int[(graphData.Length - 1) * 6]; // Two triangles per data point
 
         for (int i = 0; i < graphData.Length; i++)
@@ -236,15 +156,35 @@ public class Static2dTerrainGenerator : TerrainGeneration
         }
 
         // Get the existing MeshFilter component
-        MeshFilter meshFilter = GetComponent<MeshFilter>();
+        meshFilter = GetComponent<MeshFilter>();
 
 
         // Create the mesh
-        Mesh mesh = new Mesh();
-        mesh.vertices = vertices;
-        mesh.triangles = triangles;
+        meshFilter.mesh = new Mesh();
+        meshFilter.mesh.MarkDynamic();
+        meshFilter.mesh.SetVertices(vertices);
+        meshFilter.mesh.SetTriangles(triangles, 0);
+    }
 
-        // Assign the generated mesh to the MeshFilter
-        meshFilter.mesh = mesh;
+    private void UpdateMesh()
+    {
+
+        if (!meshFilter)
+            return;
+        if (waveformArray == null)
+            return;
+
+        Vector3[] newVertices = new List<Vector3>(vertices).ToArray();
+ 
+        for (int v = 0; v < newVertices.Length; v++)
+        {
+            if (v % 2 == 0)
+            {
+                int newY = (int)Mathf.Lerp(vertices[v].y, middlePoint, smoothness);
+                newVertices[v] = new Vector3(vertices[v].x, newY, vertices[v].z);
+
+            }
+        }
+        meshFilter.mesh.SetVertices(newVertices);
     }
 }

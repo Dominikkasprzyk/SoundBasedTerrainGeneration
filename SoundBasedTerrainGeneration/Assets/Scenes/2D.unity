@@ -177,7 +177,7 @@ Camera:
   far clip plane: 1000
   field of view: 60
   orthographic: 1
-  orthographic size: 1000
+  orthographic size: 300000
   m_Depth: -1
   m_CullingMask:
     serializedVersion: 2
@@ -201,7 +201,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 330585543}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 2000, y: 1000, z: -10}
+  m_LocalPosition: {x: 300000, y: 1000, z: -10}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -845,17 +845,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   filename: wave2
-  scale: 1
-  minStoneheight: 10
-  maxStoneHeight: 15
-  dirtTilemap: {fileID: 1586117626}
-  grassTilemap: {fileID: 936497643}
-  stoneTilemap: {fileID: 533805040}
-  dirt: {fileID: 11400000, guid: 493ff86ec9bada04eb061505cdec7764, type: 2}
-  grass: {fileID: 11400000, guid: 88478d82e09fd6a4ab7babddf03ec9f7, type: 2}
-  stone: {fileID: 11400000, guid: 4b44b6fbc406a1842a47c9dd05b41920, type: 2}
-  heightValue: 50
-  smoothness: 50
+  smoothness: 0
 --- !u!4 &2136356631
 Transform:
   m_ObjectHideFlags: 0
@@ -865,7 +855,7 @@ Transform:
   m_GameObject: {fileID: 2136356629}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 100, y: 100, z: 100}
+  m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 1
   m_Children: []
   m_Father: {fileID: 0}

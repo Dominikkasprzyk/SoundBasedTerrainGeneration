@@ -11,7 +11,7 @@ using UnityEngine.Tilemaps;
 public class Static2dTerrainGenerator : TerrainGeneration
 {
     [Range(0, 1)]
-    [SerializeField] private float smoothness = 0;
+    [SerializeField] private float smoothness;
 
     private int min, max;
     private float previousScale;
@@ -118,8 +118,6 @@ public class Static2dTerrainGenerator : TerrainGeneration
 
     void GenerateGraphMesh(int [] graphData)
     {
-        Debug.Log(waveformArray[0]);
-        Debug.Log(middlePoint);
         if (graphData == null || graphData.Length == 0)
         {
             Debug.LogError("Graph data is empty!");
@@ -168,7 +166,6 @@ public class Static2dTerrainGenerator : TerrainGeneration
 
     private void UpdateMesh()
     {
-
         if (!meshFilter)
             return;
         if (waveformArray == null)

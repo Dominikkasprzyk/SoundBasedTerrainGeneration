@@ -6,7 +6,7 @@ public class RunPython
 {
     public static void RunWaveformAndSpectogramGenerator(string filename)
     {
-        PythonRunner.RunString($@"
+        PythonRunner.RunString(@"
 
             import UnityEngine;
             import wave
@@ -15,55 +15,38 @@ public class RunPython
             import numpy as np
             import sys
 
-            
-            # Get the current working directory and specify the path for the audio file
-            path = os.getcwd() + '/Assets/' + '{filename}.wav'
-            # Open the audio file using the wave module
-            wav_obj = wave.open(path)
+            def convert_wave_to_int_array(wave_file_path):
+                with wave.open(wave_file_path, 'rb') as audio_file:
+                    num_frames = audio_file.getnframes()
+                    num_channels = audio_file.getnchannels()
+                    sample_width = audio_file.getsampwidth()
+                    frame_rate = audio_file.getframerate()
+        
+                    # Read all audio frames as bytes
+                    audio_data_bytes = audio_file.readframes(num_frames)
 
-            # Get the sample frequency (number of samples per second)
-            sample_freq = wav_obj.getframerate()
-            # Get the total number of audio samples in the file
-            n_samples = wav_obj.getnframes()
-            # Calculate the duration of the audio in seconds
-            t_audio = n_samples / sample_freq
+                    dtype_map = {1: np.int8, 2: np.int16, 4: np.int32}
+                    dtype = dtype_map[sample_width]
 
-            # Get the number of audio channels (1 for mono, 2 for stereo)
-            n_channels = wav_obj.getnchannels()
+                    audio_array = np.frombuffer(audio_data_bytes, dtype=dtype)
 
-            # Read all the audio frames from the file
-            signal_wave = wav_obj.readframes(n_samples)
-            # Convert the binary audio data to a NumPy array of 16-bit integers
-            signal_array = np.frombuffer(signal_wave, dtype=np.int16)
+                    # Reshape the array to separate channels
+                    audio_array = audio_array.reshape(-1, num_channels)
 
-            # For stereo audio, extract the left and right channels separately
-            l_channel = signal_array[0::n_channels]
-            r_channel = signal_array[1::n_channels]
+                    return audio_array / np.iinfo(audio_array.dtype).max
 
-            # Generate an array of time values corresponding to each audio sample
-            times = np.linspace(0, t_audio, num=n_samples)
+            def save_int_array_to_txt(int_array, txt_file_path):
+                with open(txt_file_path, 'w') as txt_file:
+                    txt_file.write(' '.join(str(val) for val in int_array))
+            " + $@"
 
-            # Set the figure size for the waveform plot to be proportional to the audio duration
-            plt.rcParams['figure.figsize'] = [t_audio*4000, 10]
-            # Create a new figure for the waveform plot
-            plt.figure(frameon=False)
-            # Plot the left channel waveform against time
-            plt.plot(times, l_channel)
-            # Set the x-axis limits to show the entire audio duration
-            plt.xlim(0, t_audio)
-            # Turn off axis to remove unnecessary visual elements
-            plt.axis('off')
-            # Save the waveform plot to a file
-            plt.savefig(os.getcwd() + '/Assets/GeneratedPlots/waveform.png', bbox_inches='tight', pad_inches=0)
+            wave_file_path = os.getcwd() + '/Assets/' + '{filename}.wav'
+            waveform_int_array = convert_wave_to_int_array(wave_file_path)
 
-            # Set the figure size for the spectrogram plot to be proportional to the audio duration
-            plt.rcParams['figure.figsize'] = [t_audio * 3, 6]
-            # Create a new figure for the spectrogram plot
-            plt.figure(frameon=False)
-            # Plot the spectrogram of the left channel
-            plt.specgram(l_channel, Fs=sample_freq, vmin=-20, vmax=50)
-            # Save the spectrogram plot to a file
-            plt.savefig(os.getcwd() + '/Assets/GeneratedPlots/frequencySpectrum.png', bbox_inches='tight', pad_inches=0)
+            txt_file_path = os.getcwd() + '/Assets/' + 'waveform.txt'
+            # save_int_array_to_txt(waveform_int_array, txt_file_path)
+            audio_array_int = (waveform_int_array * np.iinfo(np.int16).max).astype(np.int16)
+            np.savetxt(txt_file_path, audio_array_int, fmt='%d', delimiter=' ')
         
         ");
     }

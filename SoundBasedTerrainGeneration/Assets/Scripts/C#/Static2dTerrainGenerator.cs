@@ -15,7 +15,7 @@ public class Static2dTerrainGenerator : TerrainGeneration
 
     private int min, max;
     private float previousScale;
-    private int[] waveformArray;
+    private int[,] waveformArray;
     private int width, height, middlePoint;
     private MeshFilter meshFilter;
     private Vector3[] vertices;
@@ -38,14 +38,57 @@ public class Static2dTerrainGenerator : TerrainGeneration
     {
         base.Generation();
 
-        string waveformImage = PathCombine(Application.dataPath, "GeneratedPlots/waveform.png"); // Assign the waveform image in the Inspector
-        waveformArray = ConvertWaveformImageToArray(LoadPNG(waveformImage));
+        //string waveformImage = PathCombine(Application.dataPath, "GeneratedPlots/waveform.png"); // Assign the waveform image in the Inspector
+        //waveformArray = ConvertWaveformImageToArray(LoadPNG(waveformImage));
         //SpawnTiles();
+
+        string waveformTxt = PathCombine(Application.dataPath, "waveform.txt"); // Assign the waveform image in the Inspector
+        waveformArray = ConvertWaveformTxtToArray(waveformTxt);
+        //Debug.Log(waveformArray.Length);
+        
+        // Print the first few values to verify
+        //for (int i = 0; i < waveformArray.GetLength(1); i++)
+        //{
+        //    Debug.Log($"Channel {i + 1}: ");
+        //    for (int j = 0; j < Math.Min(10, waveformArray.GetLength(0)); j++)
+        //    {
+        //        Debug.Log($"{waveformArray[j, i]} ");
+        //    }
+        //}
+
 
         int[] test =
             {1,2,1,2,3,4,5,4,3,2,1};
 
         GenerateGraphMesh(waveformArray);
+    }
+
+    private static int[,] ConvertWaveformTxtToArray(string filePath)
+    {
+        string[] lines = File.ReadAllLines(filePath);
+        int numSamples = lines.Length;
+        int numChannels = lines[0].Split(' ').Length;
+
+        int[,] audioData = new int[numSamples, numChannels];
+
+        for (int i = 0; i < numSamples; i++)
+        {
+            string[] samples = lines[i].Split(' ');
+            for (int j = 0; j < numChannels; j++)
+            {
+                if (int.TryParse(samples[j], out int value))
+                {
+                    audioData[i, j] = value;
+                }
+                else
+                {
+                    // Handle parsing errors here if needed
+                    Debug.Log($"Error parsing value at ({i}, {j})");
+                }
+            }
+        }
+
+        return audioData;
     }
 
     private int[] ConvertWaveformImageToArray(Texture2D image)
@@ -91,7 +134,6 @@ public class Static2dTerrainGenerator : TerrainGeneration
         }
 
         //middlePoint = min + ((max - min) / 2);
-        middlePoint = waveformList[0];
 
         return waveformList.ToArray();
     }
@@ -116,8 +158,11 @@ public class Static2dTerrainGenerator : TerrainGeneration
         return tex;
     }
 
-    void GenerateGraphMesh(int [] graphData)
+    void GenerateGraphMesh(int [,] graphData)
     {
+        middlePoint = 3000;
+        Debug.Log(graphData.GetLength(0));
+        Debug.Log(graphData[graphData.GetLength(0) - 1,0]);
         if (graphData == null || graphData.Length == 0)
         {
             Debug.LogError("Graph data is empty!");
@@ -128,19 +173,19 @@ public class Static2dTerrainGenerator : TerrainGeneration
         vertices = new Vector3[numVertices];
         int[] triangles = new int[(graphData.Length - 1) * 6]; // Two triangles per data point
 
-        for (int i = 0; i < graphData.Length; i++)
+        for (int i = 0; i < graphData.GetLength(0); i++)
         {
             float x = i;
-            float y = graphData[i];
+            float y = graphData[i,0];
 
             // Vertex on the y-axis (value of the function)
-            vertices[i * 2] = new Vector3(x, y, 0);
+            vertices[i * 2] = new Vector3(x, y + middlePoint, 0);
 
             // Vertex on the x-axis
             vertices[i * 2 + 1] = new Vector3(x, 0, 0);
 
             // Create triangles for the current data point (except for the last one)
-            if (i < graphData.Length - 1)
+            if (i < graphData.GetLength(0) - 1)
             {
                 int triangleIndex = i * 6;
                 triangles[triangleIndex] = i * 2;
@@ -152,6 +197,8 @@ public class Static2dTerrainGenerator : TerrainGeneration
                 triangles[triangleIndex + 4] = (i + 1) * 2 + 1;
             }
         }
+
+        Debug.Log(vertices[vertices.Length - 2]);
 
         // Get the existing MeshFilter component
         meshFilter = GetComponent<MeshFilter>();

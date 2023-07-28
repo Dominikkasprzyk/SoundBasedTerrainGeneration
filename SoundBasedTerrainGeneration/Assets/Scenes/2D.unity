@@ -859,7 +859,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2bc6d61519c0df6449bc01410b62a2e7, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  filename: 0.1s_white_noise
+  filename: wave2
   smoothness: 0
 --- !u!4 &2136356631
 Transform:

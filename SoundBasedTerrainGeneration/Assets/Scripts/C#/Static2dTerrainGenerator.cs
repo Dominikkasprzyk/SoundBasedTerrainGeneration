@@ -13,6 +13,9 @@ public class Static2dTerrainGenerator : TerrainGeneration
     [Range(0, 1)]
     [SerializeField] private float smoothness;
 
+    [Range(0, 1)]
+    [SerializeField] private float detailLevel;
+
     private int min, max;
     private float previousScale;
     private int[,] waveformArray;
@@ -38,33 +41,16 @@ public class Static2dTerrainGenerator : TerrainGeneration
     {
         base.Generation();
 
-        //string waveformImage = PathCombine(Application.dataPath, "GeneratedPlots/waveform.png"); // Assign the waveform image in the Inspector
-        //waveformArray = ConvertWaveformImageToArray(LoadPNG(waveformImage));
-        //SpawnTiles();
-
         string waveformTxt = PathCombine(Application.dataPath, "waveform.txt"); // Assign the waveform image in the Inspector
         waveformArray = ConvertWaveformTxtToArray(waveformTxt);
-        //Debug.Log(waveformArray.Length);
-        
-        // Print the first few values to verify
-        //for (int i = 0; i < waveformArray.GetLength(1); i++)
-        //{
-        //    Debug.Log($"Channel {i + 1}: ");
-        //    for (int j = 0; j < Math.Min(10, waveformArray.GetLength(0)); j++)
-        //    {
-        //        Debug.Log($"{waveformArray[j, i]} ");
-        //    }
-        //}
-
-
-        int[] test =
-            {1,2,1,2,3,4,5,4,3,2,1};
 
         GenerateGraphMesh(waveformArray);
     }
 
-    private static int[,] ConvertWaveformTxtToArray(string filePath)
+    private int[,] ConvertWaveformTxtToArray(string filePath)
     {
+        middlePoint = 0;
+
         string[] lines = File.ReadAllLines(filePath);
         int numSamples = lines.Length;
         int numChannels = lines[0].Split(' ').Length;
@@ -79,6 +65,10 @@ public class Static2dTerrainGenerator : TerrainGeneration
                 if (int.TryParse(samples[j], out int value))
                 {
                     audioData[i, j] = value;
+                    if (value < middlePoint)
+                    {
+                        middlePoint = value;
+                    }
                 }
                 else
                 {
@@ -91,87 +81,84 @@ public class Static2dTerrainGenerator : TerrainGeneration
         return audioData;
     }
 
-    private int[] ConvertWaveformImageToArray(Texture2D image)
-    {
-        Color32[] pixels = image.GetPixels32();
-        width = image.width;
-        height = image.height;
+    //private int[] ConvertWaveformImageToArray(Texture2D image)
+    //{
+    //    Color32[] pixels = image.GetPixels32();
+    //    width = image.width;
+    //    height = image.height;
 
-        List<int> waveformList = new List<int>();
+    //    List<int> waveformList = new List<int>();
 
-        for (int x = 0; x < width; x++)
-        {
-            bool hasWaveform = false;
+    //    for (int x = 0; x < width; x++)
+    //    {
+    //        bool hasWaveform = false;
 
-            for (int y = 0; y < height; y++)
-            {
-                Color32 pixelColor = pixels[x + y * width];
+    //        for (int y = 0; y < height; y++)
+    //        {
+    //            Color32 pixelColor = pixels[x + y * width];
 
-                // Check if the pixel is not fully transparent
-                if (pixelColor.a > 0)
-                {
-                    waveformList.Add(y);
-                    hasWaveform = true;
-                    break;
-                }
-            }
+    //            // Check if the pixel is not fully transparent
+    //            if (pixelColor.a > 0)
+    //            {
+    //                waveformList.Add(y);
+    //                hasWaveform = true;
+    //                break;
+    //            }
+    //        }
 
-            if (!hasWaveform)
-            {
-                waveformList.Add(0); // Use 0 as the default value when no waveform is present
-            }
+    //        if (!hasWaveform)
+    //        {
+    //            waveformList.Add(0); // Use 0 as the default value when no waveform is present
+    //        }
 
-            if(waveformList.Count == 1)
-            {
-                min = max = waveformList.Last();
-            } else if(waveformList.Last() < min)
-            {
-                min = waveformList.Last();
-            } else if(waveformList.Last() > max)
-            {
-                max = waveformList.Last();
-            }
-        }
+    //        if(waveformList.Count == 1)
+    //        {
+    //            min = max = waveformList.Last();
+    //        } else if(waveformList.Last() < min)
+    //        {
+    //            min = waveformList.Last();
+    //        } else if(waveformList.Last() > max)
+    //        {
+    //            max = waveformList.Last();
+    //        }
+    //    }
 
-        //middlePoint = min + ((max - min) / 2);
+    //    //middlePoint = min + ((max - min) / 2);
 
-        return waveformList.ToArray();
-    }
+    //    return waveformList.ToArray();
+    //}
 
     private string PathCombine(string path1, string path2)
     {
         return System.IO.Path.Combine(path1, path2);
     }
 
-    private Texture2D LoadPNG(string filePath)
-    {
+    //private Texture2D LoadPNG(string filePath)
+    //{
 
-        Texture2D tex = null;
-        byte[] fileData;
+    //    Texture2D tex = null;
+    //    byte[] fileData;
 
-        if (File.Exists(filePath))
-        {
-            fileData = File.ReadAllBytes(filePath);
-            tex = new Texture2D(2, 2);
-            tex.LoadImage(fileData); //..this will auto-resize the texture dimensions.
-        }
-        return tex;
-    }
+    //    if (File.Exists(filePath))
+    //    {
+    //        fileData = File.ReadAllBytes(filePath);
+    //        tex = new Texture2D(2, 2);
+    //        tex.LoadImage(fileData); //..this will auto-resize the texture dimensions.
+    //    }
+    //    return tex;
+    //}
 
     void GenerateGraphMesh(int [,] graphData)
-    {
-        middlePoint = 3000;
-        Debug.Log(graphData.GetLength(0));
-        Debug.Log(graphData[graphData.GetLength(0) - 1,0]);
+    {     
         if (graphData == null || graphData.Length == 0)
         {
             Debug.LogError("Graph data is empty!");
             return;
         }
 
-        int numVertices = graphData.Length * 2; // Two vertices per data point (y-axis and x-axis)
+        int numVertices = graphData.GetLength(0) * 2; // Two vertices per data point (y-axis and x-axis)
         vertices = new Vector3[numVertices];
-        int[] triangles = new int[(graphData.Length - 1) * 6]; // Two triangles per data point
+        int[] triangles = new int[(graphData.GetLength(0) - 1) * 6]; // Two triangles per data point
 
         for (int i = 0; i < graphData.GetLength(0); i++)
         {
@@ -179,7 +166,7 @@ public class Static2dTerrainGenerator : TerrainGeneration
             float y = graphData[i,0];
 
             // Vertex on the y-axis (value of the function)
-            vertices[i * 2] = new Vector3(x, y + middlePoint, 0);
+            vertices[i * 2] = new Vector3(x, y + (-1*middlePoint), 0);
 
             // Vertex on the x-axis
             vertices[i * 2 + 1] = new Vector3(x, 0, 0);
@@ -198,14 +185,12 @@ public class Static2dTerrainGenerator : TerrainGeneration
             }
         }
 
-        Debug.Log(vertices[vertices.Length - 2]);
-
         // Get the existing MeshFilter component
         meshFilter = GetComponent<MeshFilter>();
 
-
         // Create the mesh
         meshFilter.mesh = new Mesh();
+        meshFilter.mesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
         meshFilter.mesh.MarkDynamic();
         meshFilter.mesh.SetVertices(vertices);
         meshFilter.mesh.SetTriangles(triangles, 0);
@@ -224,11 +209,11 @@ public class Static2dTerrainGenerator : TerrainGeneration
         {
             if (v % 2 == 0)
             {
-                int newY = (int)Mathf.Lerp(vertices[v].y, middlePoint, smoothness);
+                int newY = (int)Mathf.Lerp(vertices[v].y, (-1*middlePoint), smoothness);
                 newVertices[v] = new Vector3(vertices[v].x, newY, vertices[v].z);
-
             }
         }
+
         meshFilter.mesh.SetVertices(newVertices);
     }
 }

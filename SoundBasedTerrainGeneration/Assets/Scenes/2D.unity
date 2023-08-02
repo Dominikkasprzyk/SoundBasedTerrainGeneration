@@ -861,6 +861,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   filename: wave2
   smoothness: 0
+  detailLevel: 1
 --- !u!4 &2136356631
 Transform:
   m_ObjectHideFlags: 0

@@ -13,15 +13,16 @@ public class Static2dTerrainGenerator : TerrainGeneration
     [Range(0, 1)]
     [SerializeField] private float smoothness;
 
-    [Range(0, 1)]
-    [SerializeField] private float detailLevel;
+    [Min(1)]
+    [SerializeField] private int detailLevel;
 
     private int min, max;
-    private float previousScale;
+    private float previousSmoothness, previousDetailLevel;
     private int[,] waveformArray;
     private int width, height, middlePoint;
     private MeshFilter meshFilter;
     private Vector3[] vertices;
+    private int[] triangles;
 
     void Start()
     {
@@ -30,10 +31,11 @@ public class Static2dTerrainGenerator : TerrainGeneration
 
     private void OnValidate()
     {
-        if (smoothness != previousScale)
+        if (smoothness != previousSmoothness || detailLevel != previousDetailLevel)
         {
             UpdateMesh();
-            previousScale = smoothness;
+            previousSmoothness = smoothness;
+            previousDetailLevel = detailLevel;
         }
     }
 
@@ -43,6 +45,14 @@ public class Static2dTerrainGenerator : TerrainGeneration
 
         string waveformTxt = PathCombine(Application.dataPath, "waveform.txt"); // Assign the waveform image in the Inspector
         waveformArray = ConvertWaveformTxtToArray(waveformTxt);
+
+        //int[,] test = new int[5, 1];
+        //test[0, 0] = 5;
+        //test[1, 0] = 10;
+        //test[2, 0] = 15;
+        //test[3, 0] = 5;
+        //test[4, 0] = 5;
+        //middlePoint = 0;
 
         GenerateGraphMesh(waveformArray);
     }
@@ -158,7 +168,7 @@ public class Static2dTerrainGenerator : TerrainGeneration
 
         int numVertices = graphData.GetLength(0) * 2; // Two vertices per data point (y-axis and x-axis)
         vertices = new Vector3[numVertices];
-        int[] triangles = new int[(graphData.GetLength(0) - 1) * 6]; // Two triangles per data point
+        triangles = new int[(graphData.GetLength(0) - 1) * 6]; // Two triangles per data point
 
         for (int i = 0; i < graphData.GetLength(0); i++)
         {
@@ -167,7 +177,6 @@ public class Static2dTerrainGenerator : TerrainGeneration
 
             // Vertex on the y-axis (value of the function)
             vertices[i * 2] = new Vector3(x, y + (-1*middlePoint), 0);
-
             // Vertex on the x-axis
             vertices[i * 2 + 1] = new Vector3(x, 0, 0);
 
@@ -176,11 +185,11 @@ public class Static2dTerrainGenerator : TerrainGeneration
             {
                 int triangleIndex = i * 6;
                 triangles[triangleIndex] = i * 2;
-                triangles[triangleIndex + 2] = (i + 1) * 2 + 1; // Reverse the winding order here
+                triangles[triangleIndex + 2] = (i + 1) * 2 + 1; 
                 triangles[triangleIndex + 1] = (i + 1) * 2;
 
                 triangles[triangleIndex + 3] = i * 2;
-                triangles[triangleIndex + 5] = i * 2 + 1; // Reverse the winding order here
+                triangles[triangleIndex + 5] = i * 2 + 1; 
                 triangles[triangleIndex + 4] = (i + 1) * 2 + 1;
             }
         }
@@ -203,17 +212,64 @@ public class Static2dTerrainGenerator : TerrainGeneration
         if (waveformArray == null)
             return;
 
-        Vector3[] newVertices = new List<Vector3>(vertices).ToArray();
- 
-        for (int v = 0; v < newVertices.Length; v++)
+        List<Vector3> newVertices = new List<Vector3>(vertices);
+        for (int v = 0; v < newVertices.Count; v+=2)
+        {   
+            int newY = (int)Mathf.Lerp(vertices[v].y, (-1 * middlePoint), smoothness);
+            newVertices[v] = new Vector3(vertices[v].x, newY, vertices[v].z);
+        }
+
+        if(detailLevel > 1)
         {
-            if (v % 2 == 0)
-            {
-                int newY = (int)Mathf.Lerp(vertices[v].y, (-1*middlePoint), smoothness);
-                newVertices[v] = new Vector3(vertices[v].x, newY, vertices[v].z);
-            }
+            List<Vector3> interpolatedVertices = InterpolateList(detailLevel, newVertices);
+            newVertices = interpolatedVertices;
         }
 
         meshFilter.mesh.SetVertices(newVertices);
+    }
+
+    private List<Vector3> InterpolateList(int detailLevel, List<Vector3> original)
+    {
+        Debug.Log(original.Count);
+        // Initialize a new list to store the interpolated values
+        List<Vector3> interpolatedList = new List<Vector3>();
+
+        // Get the number of elements in the original list
+        int originalCount = original.Count;
+
+        // Loop through the original list, skipping elements based on the detailLevel
+        for (int i = 0; i < originalCount - 1; i += detailLevel * 2)
+        {
+            // Add the first element of the segment to the interpolated list
+            interpolatedList.Add(original[i]);
+
+            // Determine the number of steps to interpolate between current and next element
+            int steps = Math.Min(detailLevel * 2, originalCount - i - 1);
+
+            // Calculate the difference between the current and next element
+            int diff = (int)((original[i + steps].y - original[i].y)/steps);
+            Debug.Log("Prev: " + original[i].y + "; Next: " + original[i + steps].y);
+            // Interpolate between the current and next element and add to the interpolated list
+            for (int j = 1; j < steps; j++)
+            {
+                if (j % 2 == 0)
+                {
+                    int interpolatedValue = (int)(original[i].y + (diff * j) / detailLevel * 2);
+                    Vector3 newValue = new Vector3((i + j) / 2, interpolatedValue, 0);
+                    interpolatedList.Add(newValue);
+                } else
+                {
+                    Vector3 newValue = new Vector3((i + j) / 2, 0, 0);
+                    interpolatedList.Add(newValue);
+                }
+            }
+        }
+        // Add the last element from the original list to the interpolated list
+        interpolatedList.Add(original[originalCount - 1]);
+
+        Debug.Log(interpolatedList.Count);
+
+        // Return the final interpolated list
+        return interpolatedList;
     }
 }

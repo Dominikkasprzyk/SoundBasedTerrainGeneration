@@ -230,7 +230,7 @@ public class Static2dTerrainGenerator : TerrainGeneration
 
     private List<Vector3> InterpolateList(int detailLevel, List<Vector3> original)
     {
-        Debug.Log(original.Count);
+        //Debug.Log(original.Count);
         // Initialize a new list to store the interpolated values
         List<Vector3> interpolatedList = new List<Vector3>();
 
@@ -248,14 +248,21 @@ public class Static2dTerrainGenerator : TerrainGeneration
 
             // Calculate the difference between the current and next element
             int diff = (int)((original[i + steps].y - original[i].y)/steps);
-            Debug.Log("Prev: " + original[i].y + "; Next: " + original[i + steps].y);
+            //Debug.Log("Prev: " + original[i].y + "; Next: " + original[i + steps].y);
             // Interpolate between the current and next element and add to the interpolated list
             for (int j = 1; j < steps; j++)
             {
                 if (j % 2 == 0)
                 {
-                    int interpolatedValue = (int)(original[i].y + (diff * j) / detailLevel * 2);
-                    Vector3 newValue = new Vector3((i + j) / 2, interpolatedValue, 0);
+                    float percent = (float)j / steps;
+                    float interpolatedValueFloat = original[i].y +
+                        ((original[i + steps].y - original[i].y) *
+                        percent);
+                    int interpolatedValue = (int)interpolatedValueFloat;
+                    //Debug.Log("Diff: " + (original[i + steps].y - original[i].y) +
+                    //    "; Original: " + original[i].y + "; Next: " + original[i + steps].y +
+                    //    "; Interpolated" + interpolatedValue + "; Percent: " + percent);
+        Vector3 newValue = new Vector3((i + j) / 2, interpolatedValue, 0);
                     interpolatedList.Add(newValue);
                 } else
                 {
@@ -263,11 +270,12 @@ public class Static2dTerrainGenerator : TerrainGeneration
                     interpolatedList.Add(newValue);
                 }
             }
+            //Debug.Log("___");
         }
         // Add the last element from the original list to the interpolated list
         interpolatedList.Add(original[originalCount - 1]);
 
-        Debug.Log(interpolatedList.Count);
+        //Debug.Log(interpolatedList.Count);
 
         // Return the final interpolated list
         return interpolatedList;

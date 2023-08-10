@@ -49,5 +49,57 @@ public class RunPython
             np.savetxt(txt_file_path, audio_array_int, fmt='%d', delimiter=' ')
         
         ");
+
+        PythonRunner.RunString($@"
+
+            import os
+            import numpy as np
+            import matplotlib.pyplot as plt
+            import matplotlib.cm as cm
+            from scipy.io import wavfile
+            from scipy.signal import spectrogram
+            import librosa.display
+
+            # Load the .wav file
+            wav_filename = os.getcwd() + '/Assets/' + '{filename}.wav'
+            data, sample_rate = librosa.load(wav_filename, sr=None)
+
+            # Calculate the spectrogram
+            spectrogram = np.abs(librosa.stft(data))
+
+            # Convert to dB scale
+            log_spectrogram = librosa.amplitude_to_db(spectrogram, ref=np.max)
+
+            # Calculate the dynamic range of the spectrogram
+            spectrogram_range = np.max(log_spectrogram) - np.min(log_spectrogram)
+
+            # Define the percentage of dynamic range to use for visualization
+            percentile = 100  # Adjust this value to control the percentage of dynamic range
+
+            # Calculate adjusted min and max values based on percentile
+            min_color = np.percentile(log_spectrogram, 100 - percentile)
+            max_color = np.percentile(log_spectrogram, percentile)
+
+            # Map the spectrogram data to the color range
+            normalized_spectrogram = (log_spectrogram - min_color) / (max_color - min_color)
+            normalized_spectrogram = np.clip(normalized_spectrogram, 0, 1)  # Ensure values are in the range [0, 1]
+
+            # Convert the normalized spectrogram to integer values
+            integer_spectrogram = (normalized_spectrogram * 255).astype(int)
+                
+            # Reverse the order of rows
+            reversed_spectrogram = np.flipud(integer_spectrogram)
+
+            # Save the integer spectrogram data as a text file
+            txt_filename = os.getcwd() + '/Assets/' + 'spectrogram.txt'
+            np.savetxt(txt_filename, reversed_spectrogram, fmt='%d')
+
+            # Display the grayscale spectrogram
+            plt.figure(figsize=(10, 6))
+            librosa.display.specshow(integer_spectrogram, cmap='gray', sr=sample_rate, x_axis='time', y_axis='log')
+            plt.colorbar(format='%+2.0f dB')
+            plt.title('Grayscale Spectrogram')
+            plt.show()
+        ");
     }
 }

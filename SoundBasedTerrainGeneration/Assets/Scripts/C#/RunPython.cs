@@ -99,7 +99,7 @@ public class RunPython
             librosa.display.specshow(integer_spectrogram, cmap='gray', sr=sample_rate, x_axis='time', y_axis='log')
             plt.colorbar(format='%+2.0f dB')
             plt.title('Grayscale Spectrogram')
-            plt.show()
+            # plt.show()
         ");
     }
 }

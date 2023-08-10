@@ -18,8 +18,8 @@ public class Static3dTerrainGenerator : TerrainGeneration
 
     private int min, max;
     private float previousSmoothness, previousDetailLevel;
-    private int[,] waveformArray;
-    private int width, height, middlePoint;
+    private int[,] spectrogramArray;
+    private int numRows, numCols;
     private MeshFilter meshFilter;
     private Vector3[] vertices;
     private int[] triangles;
@@ -31,98 +31,103 @@ public class Static3dTerrainGenerator : TerrainGeneration
 
     private void OnValidate()
     {
-        if (smoothness != previousSmoothness || detailLevel != previousDetailLevel)
-        {
-            UpdateMesh();
-            previousSmoothness = smoothness;
-            previousDetailLevel = detailLevel;
-        }
+        //if (smoothness != previousSmoothness || detailLevel != previousDetailLevel)
+        //{
+        //    UpdateMesh();
+        //    previousSmoothness = smoothness;
+        //    previousDetailLevel = detailLevel;
+        //}
     }
 
     override protected void Generation()
     {
         base.Generation();
 
-        //string waveformTxt = PathCombine(Application.dataPath, "waveform.txt"); // Assign the waveform image in the Inspector
-        //waveformArray = ConvertWaveformTxtToArray(waveformTxt);
+        string spectrogramTxt = PathCombine(Application.dataPath, "spectrogram.txt"); // Assign the spectrogram image in the Inspector
+        spectrogramArray = ConvertSpectrogramTxtToArray(spectrogramTxt);
 
-        //GenerateGraphMesh(waveformArray);
+        //int[,] test = new int[3, 3];
+        //numRows = 3;
+        //numCols = 3;
+
+        GenerateTerrainMesh(spectrogramArray);
+
     }
 
-    private int[,] ConvertWaveformTxtToArray(string filePath)
+    private int[,] ConvertSpectrogramTxtToArray(string filePath)
     {
-        middlePoint = 0;
-
         string[] lines = File.ReadAllLines(filePath);
-        int numSamples = lines.Length;
-        int numChannels = lines[0].Split(' ').Length;
+        numRows = lines.Length;
+        string[] firstRowValues = lines[0].Split(' ');
+        numCols = firstRowValues.Length;
 
-        int[,] audioData = new int[numSamples, numChannels];
+        // Create a 2D int array to store the data
+        int[,] dataArray = new int[numRows, numCols];
 
-        for (int i = 0; i < numSamples; i++)
+        for (int i = 0; i < numRows; i++)
         {
-            string[] samples = lines[i].Split(' ');
-            for (int j = 0; j < numChannels; j++)
+            string[] values = lines[i].Split(' ');
+            for (int j = 0; j < numCols; j++)
             {
-                if (int.TryParse(samples[j], out int value))
-                {
-                    audioData[i, j] = value;
-                    if (value < middlePoint)
-                    {
-                        middlePoint = value;
-                    }
-                }
-                else
-                {
-                    // Handle parsing errors here if needed
-                    Debug.Log($"Error parsing value at ({i}, {j})");
-                }
+                int value = int.Parse(values[j]);
+                dataArray[i, j] = value;
             }
         }
 
-        return audioData;
+        return dataArray;
     }
 
     private string PathCombine(string path1, string path2)
     {
-        return System.IO.Path.Combine(path1, path2);
+        return Path.Combine(path1, path2);
     }
 
-    void GenerateGraphMesh(int [,] graphData)
-    {     
+    void GenerateTerrainMesh(int[,] graphData)
+    {
         if (graphData == null || graphData.Length == 0)
         {
             Debug.LogError("Graph data is empty!");
             return;
         }
 
-        int numVertices = graphData.GetLength(0) * 2; // Two vertices per data point (y-axis and x-axis)
-        vertices = new Vector3[numVertices];
-        triangles = new int[(graphData.GetLength(0) - 1) * 6]; // Two triangles per data point
+        // Generate the vertices and triangles for the mesh
+        Vector3[] vertices = new Vector3[numRows * numCols];
+        int[] triangles = new int[(numRows - 1) * (numCols - 1) * 6];
 
-        for (int i = 0; i < graphData.GetLength(0); i++)
+        int vertexIndex = 0;
+        int triangleIndex = 0;
+
+        for (int i = 0; i < numRows; i++)
         {
-            float x = i;
-            float y = graphData[i,0];
-
-            // Vertex on the y-axis (value of the function)
-            vertices[i * 2] = new Vector3(x, y + (-1*middlePoint), 0);
-            // Vertex on the x-axis
-            vertices[i * 2 + 1] = new Vector3(x, 0, 0);
-
-            // Create triangles for the current data point (except for the last one)
-            if (i < graphData.GetLength(0) - 1)
+            for (int j = 0; j < numCols; j++)
             {
-                int triangleIndex = i * 6;
-                triangles[triangleIndex] = i * 2;
-                triangles[triangleIndex + 2] = (i + 1) * 2 + 1; 
-                triangles[triangleIndex + 1] = (i + 1) * 2;
+                float x = j;
+                float y = graphData[i, j];
+                float z = i;
 
-                triangles[triangleIndex + 3] = i * 2;
-                triangles[triangleIndex + 5] = i * 2 + 1; 
-                triangles[triangleIndex + 4] = (i + 1) * 2 + 1;
+                vertices[vertexIndex] = new Vector3(x, y, z);
+
+                if (i < numRows - 1 && j < numCols - 1)
+                {
+                    triangles[triangleIndex] = vertexIndex;
+                    triangles[triangleIndex + 1] = vertexIndex + numCols;
+                    triangles[triangleIndex + 2] = vertexIndex + numCols + 1;
+
+                    triangles[triangleIndex + 3] = vertexIndex;
+                    triangles[triangleIndex + 4] = vertexIndex + numCols + 1;
+                    triangles[triangleIndex + 5] = vertexIndex + 1;
+
+                    triangleIndex += 6;
+                }
+
+                vertexIndex++;
             }
         }
+
+        // Create the terrain mesh
+        Mesh mesh = new Mesh();
+        mesh.vertices = vertices;
+        mesh.triangles = triangles;
 
         // Get the existing MeshFilter component
         meshFilter = GetComponent<MeshFilter>();
@@ -133,29 +138,38 @@ public class Static3dTerrainGenerator : TerrainGeneration
         meshFilter.mesh.MarkDynamic();
         meshFilter.mesh.SetVertices(vertices);
         meshFilter.mesh.SetTriangles(triangles, 0);
+        // Calculate normals (important for lighting)
+        meshFilter.mesh.RecalculateNormals();
+
+        Debug.Log(numCols + "; " + numRows);
+        Debug.Log(meshFilter.mesh.vertices[0]);
+        Debug.Log(meshFilter.mesh.vertices[1]);
+        Debug.Log(meshFilter.mesh.vertices[2]);
+        Debug.Log(meshFilter.mesh.vertices[3]);
+        Debug.Log(meshFilter.mesh.vertices[4]);
     }
 
     private void UpdateMesh()
     {
-        if (!meshFilter)
-            return;
-        if (waveformArray == null)
-            return;
+        //if (!meshFilter)
+        //    return;
+        //if (spectrogramArray == null)
+        //    return;
 
-        List<Vector3> newVertices = new List<Vector3>(vertices);
-        for (int v = 0; v < newVertices.Count; v+=2)
-        {   
-            int newY = (int)Mathf.Lerp(vertices[v].y, (-1 * middlePoint), smoothness);
-            newVertices[v] = new Vector3(vertices[v].x, newY, vertices[v].z);
-        }
+        //List<Vector3> newVertices = new List<Vector3>(vertices);
+        //for (int v = 0; v < newVertices.Count; v+=2)
+        //{   
+        //    int newY = (int)Mathf.Lerp(vertices[v].y, (-1 * middlePoint), smoothness);
+        //    newVertices[v] = new Vector3(vertices[v].x, newY, vertices[v].z);
+        //}
 
-        if(detailLevel > 1)
-        {
-            List<Vector3> interpolatedVertices = InterpolateList(detailLevel, newVertices);
-            newVertices = interpolatedVertices;
-        }
+        //if(detailLevel > 1)
+        //{
+        //    List<Vector3> interpolatedVertices = InterpolateList(detailLevel, newVertices);
+        //    newVertices = interpolatedVertices;
+        //}
 
-        meshFilter.mesh.SetVertices(newVertices);
+        //meshFilter.mesh.SetVertices(newVertices);
     }
 
     private List<Vector3> InterpolateList(int detailLevel, List<Vector3> original)

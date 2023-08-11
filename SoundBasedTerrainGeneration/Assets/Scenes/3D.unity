@@ -169,9 +169,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9d13072d00cf7b747a2399f1852eb6b0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  filename: wave2
+  filename: 0.5s_white_noise
   smoothness: 0
-  detailLevel: 0
+  smoothingSteps: 0
 --- !u!23 &1038584966
 MeshRenderer:
   m_ObjectHideFlags: 0

@@ -13,11 +13,11 @@ public class Static3dTerrainGenerator : TerrainGeneration
     [Range(0, 1)]
     [SerializeField] private float smoothness;
 
-    [Min(1)]
-    [SerializeField] private int detailLevel;
+    [Range(0, 10)]
+    [SerializeField] private int smoothingSteps;
 
     private int min, max;
-    private float previousSmoothness, previousDetailLevel;
+    private float previousSmoothness, previoussmoothingSteps;
     private int[,] spectrogramArray;
     private int numRows, numCols;
     private MeshFilter meshFilter;
@@ -31,12 +31,12 @@ public class Static3dTerrainGenerator : TerrainGeneration
 
     private void OnValidate()
     {
-        //if (smoothness != previousSmoothness || detailLevel != previousDetailLevel)
-        //{
-        //    UpdateMesh();
-        //    previousSmoothness = smoothness;
-        //    previousDetailLevel = detailLevel;
-        //}
+        if (smoothness != previousSmoothness || smoothingSteps != previoussmoothingSteps)
+        {
+            UpdateMesh();
+            previousSmoothness = smoothness;
+            previoussmoothingSteps = smoothingSteps;
+        }
     }
 
     override protected void Generation()
@@ -91,8 +91,8 @@ public class Static3dTerrainGenerator : TerrainGeneration
         }
 
         // Generate the vertices and triangles for the mesh
-        Vector3[] vertices = new Vector3[numRows * numCols];
-        int[] triangles = new int[(numRows - 1) * (numCols - 1) * 6];
+        vertices = new Vector3[numRows * numCols];
+        triangles = new int[(numRows - 1) * (numCols - 1) * 6];
 
         int vertexIndex = 0;
         int triangleIndex = 0;
@@ -129,6 +129,7 @@ public class Static3dTerrainGenerator : TerrainGeneration
         mesh.vertices = vertices;
         mesh.triangles = triangles;
 
+
         // Get the existing MeshFilter component
         meshFilter = GetComponent<MeshFilter>();
 
@@ -140,39 +141,33 @@ public class Static3dTerrainGenerator : TerrainGeneration
         meshFilter.mesh.SetTriangles(triangles, 0);
         // Calculate normals (important for lighting)
         meshFilter.mesh.RecalculateNormals();
-
-        Debug.Log(numCols + "; " + numRows);
-        Debug.Log(meshFilter.mesh.vertices[0]);
-        Debug.Log(meshFilter.mesh.vertices[1]);
-        Debug.Log(meshFilter.mesh.vertices[2]);
-        Debug.Log(meshFilter.mesh.vertices[3]);
-        Debug.Log(meshFilter.mesh.vertices[4]);
     }
 
     private void UpdateMesh()
     {
-        //if (!meshFilter)
-        //    return;
-        //if (spectrogramArray == null)
-        //    return;
+        if (!meshFilter)
+            return;
+        if (spectrogramArray == null)
+            return;
 
-        //List<Vector3> newVertices = new List<Vector3>(vertices);
-        //for (int v = 0; v < newVertices.Count; v+=2)
-        //{   
-        //    int newY = (int)Mathf.Lerp(vertices[v].y, (-1 * middlePoint), smoothness);
-        //    newVertices[v] = new Vector3(vertices[v].x, newY, vertices[v].z);
-        //}
+        List<Vector3> newVertices = new List<Vector3>(vertices);
+        for (int v = 0; v < newVertices.Count; v ++)
+        {
+            int newY = (int)Mathf.Lerp(vertices[v].y, 0, smoothness);
+            newVertices[v] = new Vector3(vertices[v].x, newY, vertices[v].z);
+        }
 
-        //if(detailLevel > 1)
-        //{
-        //    List<Vector3> interpolatedVertices = InterpolateList(detailLevel, newVertices);
-        //    newVertices = interpolatedVertices;
-        //}
+        if (smoothingSteps > 0)
+        {
+            List<Vector3> interpolatedVertices = SmoothTerrainMesh(newVertices, smoothingSteps);
+            newVertices = interpolatedVertices;
+        }
 
-        //meshFilter.mesh.SetVertices(newVertices);
+        meshFilter.mesh.SetVertices(newVertices);
+        meshFilter.mesh.RecalculateNormals();
     }
 
-    private List<Vector3> InterpolateList(int detailLevel, List<Vector3> original)
+    private List<Vector3> InterpolateList(int smoothingSteps, List<Vector3> original)
     {
         //Debug.Log(original.Count);
         // Initialize a new list to store the interpolated values
@@ -181,14 +176,14 @@ public class Static3dTerrainGenerator : TerrainGeneration
         // Get the number of elements in the original list
         int originalCount = original.Count;
 
-        // Loop through the original list, skipping elements based on the detailLevel
-        for (int i = 0; i < originalCount - 1; i += detailLevel * 2)
+        // Loop through the original list, skipping elements based on the smoothingSteps
+        for (int i = 0; i < originalCount - 1; i += smoothingSteps * 2)
         {
             // Add the first element of the segment to the interpolated list
             interpolatedList.Add(original[i]);
 
             // Determine the number of steps to interpolate between current and next element
-            int steps = Math.Min(detailLevel * 2, originalCount - i - 1);
+            int steps = Math.Min(smoothingSteps * 2, originalCount - i - 1);
 
             // Calculate the difference between the current and next element
             int diff = (int)((original[i + steps].y - original[i].y)/steps);
@@ -223,5 +218,40 @@ public class Static3dTerrainGenerator : TerrainGeneration
 
         // Return the final interpolated list
         return interpolatedList;
+    }
+
+    List <Vector3> SmoothTerrainMesh(List<Vector3> verts, int smoothIterations)
+    {
+        List<Vector3> vertices = verts;
+
+        for (int iteration = 0; iteration < smoothIterations; iteration++)
+        {
+            List<Vector3> smoothedVertices = vertices.ToArray().ToList<Vector3>();
+
+            for (int i = 0; i < numRows; i++)
+            {
+                for (int j = 0; j < numCols; j++)
+                {
+                    int vertexIndex = i * numCols + j;
+                    Vector3 averageHeight = Vector3.zero;
+                    int neighborCount = 0;
+
+                    for (int ni = Mathf.Max(0, i - 1); ni <= Mathf.Min(numRows - 1, i + 1); ni++)
+                    {
+                        for (int nj = Mathf.Max(0, j - 1); nj <= Mathf.Min(numCols - 1, j + 1); nj++)
+                        {
+                            int neighborIndex = ni * numCols + nj;
+                            averageHeight += vertices[neighborIndex];
+                            neighborCount++;
+                        }
+                    }
+
+                    smoothedVertices[vertexIndex] = averageHeight / neighborCount;
+                }
+            }
+
+            vertices = smoothedVertices;
+        }
+        return vertices;
     }
 }

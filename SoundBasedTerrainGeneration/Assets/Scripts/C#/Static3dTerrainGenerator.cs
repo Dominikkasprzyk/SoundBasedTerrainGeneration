@@ -1,67 +1,42 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using UnityEngine;
-using UnityEngine.Tilemaps;
 
-[RequireComponent(typeof(MeshFilter))]
-[RequireComponent(typeof(MeshRenderer))]
 public class Static3dTerrainGenerator : TerrainGeneration
 {
-    [Range(0, 1)]
-    [SerializeField] private float smoothness;
-
-    [Range(0, 10)]
-    [SerializeField] private int smoothingSteps;
-
-    private int min, max;
-    private float previousSmoothness, previoussmoothingSteps;
-    private int[,] spectrogramArray;
     private int numRows, numCols;
-    private MeshFilter meshFilter;
-    private Vector3[] vertices;
-    private int[] triangles;
+
+    override protected string txtDataFilePath
+    {
+        get
+        {
+            return "spectrogram.txt";
+        }
+    }
 
     void Start()
     {
         Generation();
     }
 
-    private void OnValidate()
-    {
-        if (smoothness != previousSmoothness || smoothingSteps != previoussmoothingSteps)
-        {
-            UpdateMesh();
-            previousSmoothness = smoothness;
-            previoussmoothingSteps = smoothingSteps;
-        }
-    }
-
     override protected void Generation()
     {
         base.Generation();
-
-        string spectrogramTxt = PathCombine(Application.dataPath, "spectrogram.txt"); // Assign the spectrogram image in the Inspector
-        spectrogramArray = ConvertSpectrogramTxtToArray(spectrogramTxt);
-
-        //int[,] test = new int[3, 3];
-        //numRows = 3;
-        //numCols = 3;
-
-        GenerateTerrainMesh(spectrogramArray);
-
+        vertexDataArray = ConvertTxtToArray(Path.Combine(Application.dataPath, txtDataFilePath));
+        GenerateTerrainMesh(ExtractDetails(vertexDataArray));
     }
 
-    private int[,] ConvertSpectrogramTxtToArray(string filePath)
+    override protected int[,] ConvertTxtToArray(string filePath)
     {
         string[] lines = File.ReadAllLines(filePath);
         numRows = lines.Length;
         string[] firstRowValues = lines[0].Split(' ');
         numCols = firstRowValues.Length;
 
-        // Create a 2D int array to store the data
+        Debug.Log(numRows + "; " + numCols);
+
         int[,] dataArray = new int[numRows, numCols];
 
         for (int i = 0; i < numRows; i++)
@@ -77,33 +52,30 @@ public class Static3dTerrainGenerator : TerrainGeneration
         return dataArray;
     }
 
-    private string PathCombine(string path1, string path2)
+    override protected void GenerateTerrainMesh(int[,] dataArray)
     {
-        return Path.Combine(path1, path2);
-    }
-
-    void GenerateTerrainMesh(int[,] graphData)
-    {
-        if (graphData == null || graphData.Length == 0)
+        if (dataArray == null || dataArray.Length == 0)
         {
             Debug.LogError("Graph data is empty!");
             return;
         }
 
-        // Generate the vertices and triangles for the mesh
+        numRows = dataArray.GetLength(0);
+        numCols = dataArray.GetLength(1);
+
         vertices = new Vector3[numRows * numCols];
         triangles = new int[(numRows - 1) * (numCols - 1) * 6];
 
         int vertexIndex = 0;
         int triangleIndex = 0;
 
-        for (int i = 0; i < numRows; i++)
+        for (int i = 0; i < numRows; i ++)
         {
-            for (int j = 0; j < numCols; j++)
+            for (int j = 0; j < numCols; j ++)
             {
-                float x = j;
-                float y = graphData[i, j];
-                float z = i;
+                float x = j * skipDetail;
+                float y = dataArray[i, j];
+                float z = i * skipDetail;
 
                 vertices[vertexIndex] = new Vector3(x, y, z);
 
@@ -123,104 +95,46 @@ public class Static3dTerrainGenerator : TerrainGeneration
                 vertexIndex++;
             }
         }
-
-        // Create the terrain mesh
-        Mesh mesh = new Mesh();
-        mesh.vertices = vertices;
-        mesh.triangles = triangles;
-
-
-        // Get the existing MeshFilter component
         meshFilter = GetComponent<MeshFilter>();
-
-        // Create the mesh
         meshFilter.mesh = new Mesh();
         meshFilter.mesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
         meshFilter.mesh.MarkDynamic();
         meshFilter.mesh.SetVertices(vertices);
         meshFilter.mesh.SetTriangles(triangles, 0);
-        // Calculate normals (important for lighting)
         meshFilter.mesh.RecalculateNormals();
     }
 
-    private void UpdateMesh()
+    override protected void UpdateMesh()
     {
         if (!meshFilter)
             return;
-        if (spectrogramArray == null)
+        if (vertexDataArray == null)
             return;
 
         List<Vector3> newVertices = new List<Vector3>(vertices);
-        for (int v = 0; v < newVertices.Count; v ++)
+        for (int v = 0; v < newVertices.Count; v++)
         {
-            int newY = (int)Mathf.Lerp(vertices[v].y, 0, smoothness);
+            int newY = (int)Mathf.Lerp(0, vertices[v].y, steepness);
             newVertices[v] = new Vector3(vertices[v].x, newY, vertices[v].z);
         }
 
         if (smoothingSteps > 0)
         {
-            List<Vector3> interpolatedVertices = SmoothTerrainMesh(newVertices, smoothingSteps);
-            newVertices = interpolatedVertices;
+            List<Vector3> smoothedVertices = SmoothTerrainMesh(newVertices, smoothingSteps);
+            newVertices = smoothedVertices;
+        }
+
+        if (skipDetail > 0)
+        {
+            //List<Vector3> undetailedVertices = SkipDetail(newVertices, smoothingSteps);
+            //newVertices = undetailedVertices;
         }
 
         meshFilter.mesh.SetVertices(newVertices);
         meshFilter.mesh.RecalculateNormals();
     }
 
-    private List<Vector3> InterpolateList(int smoothingSteps, List<Vector3> original)
-    {
-        //Debug.Log(original.Count);
-        // Initialize a new list to store the interpolated values
-        List<Vector3> interpolatedList = new List<Vector3>();
-
-        // Get the number of elements in the original list
-        int originalCount = original.Count;
-
-        // Loop through the original list, skipping elements based on the smoothingSteps
-        for (int i = 0; i < originalCount - 1; i += smoothingSteps * 2)
-        {
-            // Add the first element of the segment to the interpolated list
-            interpolatedList.Add(original[i]);
-
-            // Determine the number of steps to interpolate between current and next element
-            int steps = Math.Min(smoothingSteps * 2, originalCount - i - 1);
-
-            // Calculate the difference between the current and next element
-            int diff = (int)((original[i + steps].y - original[i].y)/steps);
-            //Debug.Log("Prev: " + original[i].y + "; Next: " + original[i + steps].y);
-            // Interpolate between the current and next element and add to the interpolated list
-            for (int j = 1; j < steps; j++)
-            {
-                if (j % 2 == 0)
-                {
-                    float percent = (float)j / steps;
-                    float interpolatedValueFloat = original[i].y +
-                        ((original[i + steps].y - original[i].y) *
-                        percent);
-                    int interpolatedValue = (int)interpolatedValueFloat;
-                    //Debug.Log("Diff: " + (original[i + steps].y - original[i].y) +
-                    //    "; Original: " + original[i].y + "; Next: " + original[i + steps].y +
-                    //    "; Interpolated" + interpolatedValue + "; Percent: " + percent);
-                    Vector3 newValue = new Vector3((i + j) / 2, interpolatedValue, 0);
-                    interpolatedList.Add(newValue);
-                } else
-                {
-                    Vector3 newValue = new Vector3((i + j) / 2, 0, 0);
-                    interpolatedList.Add(newValue);
-                }
-            }
-            //Debug.Log("___");
-        }
-        // Add the last element from the original list to the interpolated list
-        interpolatedList.Add(original[originalCount - 1]);
-
-        //Debug.Log(interpolatedList.Count);
-
-        // Return the final interpolated list
-        return interpolatedList;
-    }
-
-    List <Vector3> SmoothTerrainMesh(List<Vector3> verts, int smoothIterations)
+    List<Vector3> SmoothTerrainMesh(List<Vector3> verts, int smoothIterations)
     {
         List<Vector3> vertices = verts;
 
@@ -253,5 +167,38 @@ public class Static3dTerrainGenerator : TerrainGeneration
             vertices = smoothedVertices;
         }
         return vertices;
+    }
+
+    private int[,] ExtractDetails(int[,] original)
+    {
+        int oldRowCount = original.GetLength(0);
+        int oldColCount = original.GetLength(1);
+
+        int newRowCount = 2 + ((oldRowCount - 2) / skipDetail);
+        int newColCount = 2 + ((oldColCount - 2) / skipDetail);
+
+        int[,] result = new int[newRowCount, newColCount];
+
+        int newRow = 0;
+        for (int i = 0; i < oldRowCount; i += skipDetail)
+        {
+            int newCol = 0;
+            for (int j = 0; j < oldColCount; j += skipDetail)
+            {
+                result[newRow,newCol] = original[i,j];
+                newCol++;
+            }
+            result[newRow,newColCount - 1] = original[i,oldColCount - 1];
+            newRow++;
+        }
+        int newColLast = 0;
+        for (int j = 0; j < oldColCount; j += skipDetail)
+        {
+            result[newRowCount - 1,newColLast] = original[oldRowCount - 1,j];
+            newColLast++;
+        }
+        result[newRowCount - 1,newColCount - 1] = original[oldRowCount - 1,oldColCount - 1];
+
+        return result;
     }
 }

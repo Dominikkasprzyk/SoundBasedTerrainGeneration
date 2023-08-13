@@ -1,15 +1,18 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using UnityEngine;
-using UnityEngine.Tilemaps;
 
-[RequireComponent(typeof(MeshFilter))]
-[RequireComponent(typeof(MeshRenderer))]
 public class Static2dTerrainGenerator : TerrainGeneration
 {
+    override protected string txtDataFilePath
+    {
+        get
+        {
+            return "waveform.txt";
+        }
+    }
+
     [Range(0, 1)]
     [SerializeField] private float smoothness;
 
@@ -18,7 +21,7 @@ public class Static2dTerrainGenerator : TerrainGeneration
 
     private int min, max;
     private float previousSmoothness, previousDetailLevel;
-    private int[,] waveformArray;
+    private int[,] vertexDataArray;
     private int width, height, middlePoint;
     private MeshFilter meshFilter;
     private Vector3[] vertices;
@@ -44,7 +47,7 @@ public class Static2dTerrainGenerator : TerrainGeneration
         base.Generation();
 
         string waveformTxt = PathCombine(Application.dataPath, "waveform.txt"); // Assign the waveform image in the Inspector
-        waveformArray = ConvertWaveformTxtToArray(waveformTxt);
+        vertexDataArray = ConvertTxtToArray(waveformTxt);
 
         //int[,] test = new int[5, 1];
         //test[0, 0] = 5;
@@ -54,10 +57,10 @@ public class Static2dTerrainGenerator : TerrainGeneration
         //test[4, 0] = 5;
         //middlePoint = 0;
 
-        GenerateGraphMesh(waveformArray);
+        GenerateGraphMesh(vertexDataArray);
     }
 
-    private int[,] ConvertWaveformTxtToArray(string filePath)
+    override protected int[,] ConvertTxtToArray(string filePath)
     {
         middlePoint = 0;
 
@@ -89,6 +92,11 @@ public class Static2dTerrainGenerator : TerrainGeneration
         }
 
         return audioData;
+    }
+
+    override protected void GenerateTerrainMesh(int[,] dataArray)
+    {
+
     }
 
     //private int[] ConvertWaveformImageToArray(Texture2D image)
@@ -205,11 +213,11 @@ public class Static2dTerrainGenerator : TerrainGeneration
         meshFilter.mesh.SetTriangles(triangles, 0);
     }
 
-    private void UpdateMesh()
+    override protected void UpdateMesh()
     {
         if (!meshFilter)
             return;
-        if (waveformArray == null)
+        if (vertexDataArray == null)
             return;
 
         List<Vector3> newVertices = new List<Vector3>(vertices);
@@ -246,8 +254,6 @@ public class Static2dTerrainGenerator : TerrainGeneration
             // Determine the number of steps to interpolate between current and next element
             int steps = Math.Min(detailLevel * 2, originalCount - i - 1);
 
-            // Calculate the difference between the current and next element
-            int diff = (int)((original[i + steps].y - original[i].y)/steps);
             //Debug.Log("Prev: " + original[i].y + "; Next: " + original[i + steps].y);
             // Interpolate between the current and next element and add to the interpolated list
             for (int j = 1; j < steps; j++)

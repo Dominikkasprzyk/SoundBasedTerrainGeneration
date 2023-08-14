@@ -430,7 +430,6 @@ GameObject:
   m_Component:
   - component: {fileID: 2136356631}
   - component: {fileID: 2136356630}
-  - component: {fileID: 2136356632}
   - component: {fileID: 2136356634}
   - component: {fileID: 2136356633}
   m_Layer: 0
@@ -452,9 +451,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2bc6d61519c0df6449bc01410b62a2e7, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  filename: wave2
-  smoothness: 0
-  detailLevel: 1
+  wavFilename: wave
+  steepness: 1
+  smoothingSteps: 0
+  skipDetail: 100
 --- !u!4 &2136356631
 Transform:
   m_ObjectHideFlags: 0
@@ -470,18 +470,6 @@ Transform:
   m_Father: {fileID: 0}
   m_RootOrder: 3
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &2136356632
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2136356629}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b9224719e650cfa4598ef843c56c7770, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!23 &2136356633
 MeshRenderer:
   m_ObjectHideFlags: 0

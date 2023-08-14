@@ -41,7 +41,7 @@ public class Static3dTerrainGenerator : TerrainGeneration
     {
         if (dataArray == null || dataArray.Length == 0)
         {
-            Debug.LogError("Graph data is empty!");
+            Debug.LogError("Data is empty!");
             return;
         }
 

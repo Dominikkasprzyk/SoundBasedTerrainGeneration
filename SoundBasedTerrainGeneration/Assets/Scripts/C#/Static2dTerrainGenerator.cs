@@ -41,10 +41,8 @@ public class Static2dTerrainGenerator : TerrainGeneration
             previousDetailLevel = detailLevel;
         }
     }
-
-    override protected void Generation()
+    protected void Generation()
     {
-        base.Generation();
 
         string waveformTxt = PathCombine(Application.dataPath, "waveform.txt"); // Assign the waveform image in the Inspector
         vertexDataArray = ConvertTxtToArray(waveformTxt);
@@ -285,5 +283,43 @@ public class Static2dTerrainGenerator : TerrainGeneration
 
         // Return the final interpolated list
         return interpolatedList;
+    }
+
+    override protected int[,] ExtractDetails(int[,] original)
+    {
+        int oldRowCount = original.GetLength(0);
+        int oldColCount = original.GetLength(1);
+
+        int newRowCount = 2 + ((oldRowCount - 2) / skipDetail);
+        int newColCount = 2 + ((oldColCount - 2) / skipDetail);
+
+        int[,] result = new int[newRowCount, newColCount];
+
+        int newRow = 0;
+        for (int i = 0; i < oldRowCount; i += skipDetail)
+        {
+            int newCol = 0;
+            for (int j = 0; j < oldColCount; j += skipDetail)
+            {
+                result[newRow, newCol] = original[i, j];
+                newCol++;
+            }
+            result[newRow, newColCount - 1] = original[i, oldColCount - 1];
+            newRow++;
+        }
+        int newColLast = 0;
+        for (int j = 0; j < oldColCount; j += skipDetail)
+        {
+            result[newRowCount - 1, newColLast] = original[oldRowCount - 1, j];
+            newColLast++;
+        }
+        result[newRowCount - 1, newColCount - 1] = original[oldRowCount - 1, oldColCount - 1];
+
+        return result;
+    }
+
+    override protected void AdjustVertices()
+    {
+
     }
 }

@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -16,26 +15,12 @@ public class Static3dTerrainGenerator : TerrainGeneration
         }
     }
 
-    void Start()
-    {
-        Generation();
-    }
-
-    override protected void Generation()
-    {
-        base.Generation();
-        vertexDataArray = ConvertTxtToArray(Path.Combine(Application.dataPath, txtDataFilePath));
-        GenerateTerrainMesh(ExtractDetails(vertexDataArray));
-    }
-
     override protected int[,] ConvertTxtToArray(string filePath)
     {
         string[] lines = File.ReadAllLines(filePath);
         numRows = lines.Length;
         string[] firstRowValues = lines[0].Split(' ');
         numCols = firstRowValues.Length;
-
-        Debug.Log(numRows + "; " + numCols);
 
         int[,] dataArray = new int[numRows, numCols];
 
@@ -77,6 +62,16 @@ public class Static3dTerrainGenerator : TerrainGeneration
                 float y = dataArray[i, j];
                 float z = i * skipDetail;
 
+                if(x > vertexDataArray.GetLength(1))
+                {
+                    x = vertexDataArray.GetLength(1) - 1;
+                }
+
+                if (z > vertexDataArray.GetLength(0))
+                {
+                    z = vertexDataArray.GetLength(0) - 1;
+                }
+
                 vertices[vertexIndex] = new Vector3(x, y, z);
 
                 if (i < numRows - 1 && j < numCols - 1)
@@ -95,42 +90,43 @@ public class Static3dTerrainGenerator : TerrainGeneration
                 vertexIndex++;
             }
         }
-        meshFilter = GetComponent<MeshFilter>();
-        meshFilter.mesh = new Mesh();
-        meshFilter.mesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
-        meshFilter.mesh.MarkDynamic();
-        meshFilter.mesh.SetVertices(vertices);
-        meshFilter.mesh.SetTriangles(triangles, 0);
-        meshFilter.mesh.RecalculateNormals();
+        if (!meshFilter)
+        {
+            meshFilter = GetComponent<MeshFilter>();
+            meshFilter.mesh = new Mesh();
+            meshFilter.mesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
+            meshFilter.mesh.MarkDynamic();
+        }
+        AdjustVertices();
     }
 
     override protected void UpdateMesh()
     {
         if (!meshFilter)
             return;
-        if (vertexDataArray == null)
-            return;
+        if(skipDetail != previousSkipDetail)
+            GenerateTerrainMesh(ExtractDetails(vertexDataArray));
+        AdjustVertices();
+    }
 
-        List<Vector3> newVertices = new List<Vector3>(vertices);
-        for (int v = 0; v < newVertices.Count; v++)
+    override protected void AdjustVertices()
+    {
+        List<Vector3> adjsutedVertices = new List<Vector3>(vertices);
+        for (int v = 0; v < adjsutedVertices.Count; v++)
         {
             int newY = (int)Mathf.Lerp(0, vertices[v].y, steepness);
-            newVertices[v] = new Vector3(vertices[v].x, newY, vertices[v].z);
+            adjsutedVertices[v] = new Vector3(vertices[v].x, newY, vertices[v].z);
         }
 
         if (smoothingSteps > 0)
         {
-            List<Vector3> smoothedVertices = SmoothTerrainMesh(newVertices, smoothingSteps);
-            newVertices = smoothedVertices;
+            List<Vector3> smoothedVertices = SmoothTerrainMesh(adjsutedVertices, smoothingSteps);
+            adjsutedVertices = smoothedVertices;
         }
 
-        if (skipDetail > 0)
-        {
-            //List<Vector3> undetailedVertices = SkipDetail(newVertices, smoothingSteps);
-            //newVertices = undetailedVertices;
-        }
-
-        meshFilter.mesh.SetVertices(newVertices);
+        meshFilter.mesh.triangles = null;
+        meshFilter.mesh.SetVertices(adjsutedVertices);
+        meshFilter.mesh.SetTriangles(triangles, 0);
         meshFilter.mesh.RecalculateNormals();
     }
 
@@ -169,7 +165,7 @@ public class Static3dTerrainGenerator : TerrainGeneration
         return vertices;
     }
 
-    private int[,] ExtractDetails(int[,] original)
+    override protected int[,] ExtractDetails(int[,] original)
     {
         int oldRowCount = original.GetLength(0);
         int oldColCount = original.GetLength(1);

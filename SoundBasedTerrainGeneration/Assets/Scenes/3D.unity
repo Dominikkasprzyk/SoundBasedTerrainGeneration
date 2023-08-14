@@ -172,7 +172,7 @@ MonoBehaviour:
   wavFilename: wave2
   steepness: 1
   smoothingSteps: 0
-  skipDetail: 10
+  skipDetail: 1
 --- !u!23 &1038584966
 MeshRenderer:
   m_ObjectHideFlags: 0

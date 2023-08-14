@@ -1,3 +1,4 @@
+using System.IO;
 using UnityEngine;
 
 [RequireComponent(typeof(MeshFilter))]
@@ -28,9 +29,11 @@ abstract public class TerrainGeneration : MonoBehaviour
         get;
     }
 
-    virtual protected void Generation()
+    virtual protected void Start()
     {
         RunPython.RunWaveformAndSpectogramGenerator(wavFilename);
+        vertexDataArray = ConvertTxtToArray(Path.Combine(Application.dataPath, txtDataFilePath));
+        GenerateTerrainMesh(ExtractDetails(vertexDataArray));
     }
 
     private void OnValidate()
@@ -46,9 +49,13 @@ abstract public class TerrainGeneration : MonoBehaviour
         }
     }
 
-    abstract protected void UpdateMesh();
+    abstract protected int[,] ConvertTxtToArray(string txtFilePath);
 
     abstract protected void GenerateTerrainMesh(int[,] dataArray);
 
-    abstract protected int[,] ConvertTxtToArray(string txtFilePath);
+    abstract protected void UpdateMesh();
+
+    abstract protected void AdjustVertices();
+
+    abstract protected int[,] ExtractDetails(int[,] original);
 }

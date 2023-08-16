@@ -101,5 +101,65 @@ public class RunPython
             plt.title('Grayscale Spectrogram')
             # plt.show()
         ");
+
+        PythonRunner.RunString($@"
+
+            import os
+            import numpy as np
+            import scipy.io.wavfile as wavfile
+            import matplotlib.pyplot as plt
+
+            def wav_to_frequency_amplitudes(wav_file_path, time_in_seconds):
+                # Load the WAV file
+                sample_rate, data = wavfile.read(wav_file_path)
+    
+                # Calculate the number of samples to consider based on the time
+                num_samples = int(time_in_seconds * sample_rate)
+    
+                # Take the FFT of the selected portion of the data
+                frequencies, amplitudes = get_frequency_spectrum(data[:num_samples], sample_rate)
+    
+                return frequencies, amplitudes
+
+            def get_frequency_spectrum(data, sample_rate):
+                # Perform Fast Fourier Transform (FFT) to get frequency spectrum
+                fft_result = np.fft.fft(data, axis=0)
+    
+                # Calculate corresponding frequencies for each bin
+                frequencies = np.fft.fftfreq(len(fft_result), d=1/sample_rate)
+    
+                # Discard negative frequencies and their corresponding amplitudes
+                positive_freq_mask = frequencies >= 0
+                frequencies = frequencies[positive_freq_mask]
+                fft_result = fft_result[positive_freq_mask]
+    
+                # Calculate the absolute amplitude values in decibels (dB)
+                amplitudes = 20 * np.log10(np.abs(fft_result))
+    
+                return frequencies, amplitudes
+
+            # Specify the path to the WAV file and the desired time moment
+            wav_file_path = os.getcwd() + '/Assets/' + '{filename}.wav'
+            time_in_seconds = 1.0  # Adjust this value as needed
+
+            # Convert WAV data to frequency amplitudes
+            frequencies, amplitudes = wav_to_frequency_amplitudes(wav_file_path, time_in_seconds)
+
+            # Convert frequencies to a linear scale with the new range from 0 to 20,000 Hz
+            frequencies = np.linspace(0, 20000, len(frequencies))
+            
+            # Convert amplitudes to integers
+            amplitudes = amplitudes.astype(int)
+
+            num_channels = amplitudes.shape[1]
+
+            # Save the amplitudes as a text file
+            output_file_path = os.getcwd() + '/Assets/' + 'amplitude_data.txt'
+            with open(output_file_path, 'w') as file:
+                num_frequencies = len(frequencies)
+                for i in range(num_frequencies):
+                    amplitude_values = ' '.join([str(amplitudes[i, channel]) for channel in range(num_channels)])
+                    file.write(amplitude_values + '\n')
+            ");
     }
 }

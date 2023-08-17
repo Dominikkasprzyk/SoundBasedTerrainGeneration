@@ -5,7 +5,7 @@ using UnityEngine;
 [RequireComponent(typeof(MeshRenderer))]
 abstract public class TerrainGeneration : MonoBehaviour
 {
-    [SerializeField] private string wavFilename;
+    [SerializeField] protected string wavFilename;
     
     [Range(0, 1)]
     [SerializeField] protected float steepness;

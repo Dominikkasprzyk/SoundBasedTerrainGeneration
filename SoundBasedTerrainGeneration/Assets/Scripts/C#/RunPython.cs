@@ -147,7 +147,7 @@ public class RunPython
 
                     # Convert amplitudes to integers before appending to the output data
                     amplitudes_int = amplitudes_dB.astype(int)
-                    output_data.extend(amplitudes_int)
+                    output_data.extend(np.abs(amplitudes_int))
 
                 # Add delimiter between time samples
                 if step < num_steps - 1:

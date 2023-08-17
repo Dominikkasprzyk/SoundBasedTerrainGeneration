@@ -26,11 +26,14 @@ public class Dynamic2dTerrainGenerator : TerrainGeneration
 
         for (int i = 0; i < numSamples; i++)
         {
-            string[] samples = lines[i].Split(' ');
-            for (int j = 0; j < numChannels; j++)
+            if (lines[i] != "@")
             {
-                int value = int.Parse(samples[j]);
-                dataArray[i, j] = value;
+                string[] samples = lines[i].Split(' ');
+                for (int j = 0; j < numChannels; j++)
+                {
+                    int value = int.Parse(samples[j]);
+                    dataArray[i, j] = value;
+                }
             }
         }
 

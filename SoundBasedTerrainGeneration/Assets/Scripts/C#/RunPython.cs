@@ -106,60 +106,55 @@ public class RunPython
 
             import os
             import numpy as np
-            import scipy.io.wavfile as wavfile
-            import matplotlib.pyplot as plt
+            from scipy.io import wavfile
 
-            def wav_to_frequency_amplitudes(wav_file_path, time_in_seconds):
-                # Load the WAV file
-                sample_rate, data = wavfile.read(wav_file_path)
-    
-                # Calculate the number of samples to consider based on the time
-                num_samples = int(time_in_seconds * sample_rate)
-    
-                # Take the FFT of the selected portion of the data
-                frequencies, amplitudes = get_frequency_spectrum(data[:num_samples], sample_rate)
-    
-                return frequencies, amplitudes
+            # Parameters
+            input_wav = os.getcwd() + '/Assets/' + '{filename}.wav'
+            output_txt = os.getcwd() + '/Assets/' + 'amplitude_data.txt'
+            time_step = 0.1  # seconds
+            freq_range = (0, 20000)  # Hz
 
-            def get_frequency_spectrum(data, sample_rate):
-                # Perform Fast Fourier Transform (FFT) to get frequency spectrum
-                fft_result = np.fft.fft(data, axis=0)
-    
-                # Calculate corresponding frequencies for each bin
-                frequencies = np.fft.fftfreq(len(fft_result), d=1/sample_rate)
-    
-                # Discard negative frequencies and their corresponding amplitudes
-                positive_freq_mask = frequencies >= 0
-                frequencies = frequencies[positive_freq_mask]
-                fft_result = fft_result[positive_freq_mask]
-    
-                # Calculate the absolute amplitude values in decibels (dB)
-                amplitudes = 20 * np.log10(np.abs(fft_result))
-    
-                return frequencies, amplitudes
+            # Read WAV file
+            sample_rate, data = wavfile.read(input_wav)
+            # num_channels = data.shape[1] if len(data.shape) > 1 else 1
+            num_channels = 1
 
-            # Specify the path to the WAV file and the desired time moment
-            wav_file_path = os.getcwd() + '/Assets/' + '{filename}.wav'
-            time_in_seconds = 1.0  # Adjust this value as needed
+            # Calculate the number of samples per time step
+            samples_per_step = int(sample_rate * time_step)
 
-            # Convert WAV data to frequency amplitudes
-            frequencies, amplitudes = wav_to_frequency_amplitudes(wav_file_path, time_in_seconds)
+            # Calculate the number of steps
+            num_steps = len(data) // samples_per_step
 
-            # Convert frequencies to a linear scale with the new range from 0 to 20,000 Hz
-            frequencies = np.linspace(0, 20000, len(frequencies))
-            
-            # Convert amplitudes to integers
-            amplitudes = amplitudes.astype(int)
+            # Initialize the output data
+            output_data = []
 
-            num_channels = amplitudes.shape[1]
+            # Loop through time steps
+            for step in range(num_steps):
+                sample_index = step * samples_per_step
 
-            # Save the amplitudes as a text file
-            output_file_path = os.getcwd() + '/Assets/' + 'amplitude_data.txt'
-            with open(output_file_path, 'w') as file:
-                num_frequencies = len(frequencies)
-                for i in range(num_frequencies):
-                    amplitude_values = ' '.join([str(amplitudes[i, channel]) for channel in range(num_channels)])
-                    file.write(amplitude_values + '\n')
+                # Extract the sample data at the current time step
+                sample_data = data[sample_index : sample_index + samples_per_step]
+
+                # Compute the FFT of the sample data for each channel
+                for channel in range(num_channels):
+                    fft_result = np.fft.fft(sample_data[:, channel])
+                    freqs = np.fft.fftfreq(len(fft_result), d=1/sample_rate)
+
+                    # Extract amplitudes in the specified frequency range
+                    freq_indices = np.where((freqs >= freq_range[0]) & (freqs <= freq_range[1]))
+                    magnitudes = np.abs(fft_result[freq_indices])
+                    amplitudes_dB = 20 * np.log10(magnitudes)
+
+                    # Convert amplitudes to integers before appending to the output data
+                    amplitudes_int = amplitudes_dB.astype(int)
+                    output_data.extend(amplitudes_int)
+
+                # Add delimiter between time samples
+                if step < num_steps - 1:
+                    output_data.append('@')
+
+            # Save the output data to a text file
+            np.savetxt(output_txt, output_data, delimiter=' ', fmt='%s')
             ");
     }
 }

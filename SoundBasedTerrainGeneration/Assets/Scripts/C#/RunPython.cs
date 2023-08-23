@@ -47,6 +47,18 @@ public class RunPython
             # save_int_array_to_txt(waveform_int_array, txt_file_path)
             audio_array_int = (waveform_int_array * np.iinfo(np.int16).max).astype(np.int16)
             np.savetxt(txt_file_path, audio_array_int, fmt='%d', delimiter=' ')
+
+            with wave.open(wave_file_path, 'rb') as audio_file:
+                                num_frames = audio_file.getnframes()
+                                num_channels = audio_file.getnchannels()
+                                sample_width = audio_file.getsampwidth()
+                                frame_rate = audio_file.getframerate()
+            time_axis = np.arange(0, num_frames) / frame_rate
+            # plt.plot(time_axis, waveform_int_array)
+            # plt.title('Waveform Plot')
+            # plt.xlabel('Time (s)')
+            # plt.ylabel('Amplitude')
+            # plt.show()
         
         ");
 
@@ -56,8 +68,6 @@ public class RunPython
             import numpy as np
             import matplotlib.pyplot as plt
             import matplotlib.cm as cm
-            from scipy.io import wavfile
-            from scipy.signal import spectrogram
             import librosa.display
 
             # Load the .wav file
@@ -95,66 +105,66 @@ public class RunPython
             np.savetxt(txt_filename, reversed_spectrogram, fmt='%d')
 
             # Display the grayscale spectrogram
-            plt.figure(figsize=(10, 6))
-            librosa.display.specshow(integer_spectrogram, cmap='gray', sr=sample_rate, x_axis='time', y_axis='log')
-            plt.colorbar(format='%+2.0f dB')
-            plt.title('Grayscale Spectrogram')
+            # plt.figure(figsize=(10, 6))
+            # librosa.display.specshow(integer_spectrogram, cmap='gray', sr=sample_rate, x_axis='time', y_axis='log')
+            # plt.colorbar(format='%+2.0f dB')
+            # plt.title('Grayscale Spectrogram')
             # plt.show()
         ");
 
-        PythonRunner.RunString($@"
+        //PythonRunner.RunString($@"
 
-            import os
-            import numpy as np
-            from scipy.io import wavfile
+        //    import os
+        //    import numpy as np
+        //    from scipy.io import wavfile
 
-            # Parameters
-            input_wav = os.getcwd() + '/Assets/' + '{filename}.wav'
-            output_txt = os.getcwd() + '/Assets/' + 'amplitude_data.txt'
-            time_step = 0.1  # seconds
-            freq_range = (0, 20000)  # Hz
+        //    # Parameters
+        //    input_wav = os.getcwd() + '/Assets/' + '{filename}.wav'
+        //    output_txt = os.getcwd() + '/Assets/' + 'amplitude_data.txt'
+        //    time_step = 0.1  # seconds
+        //    freq_range = (0, 20000)  # Hz
 
-            # Read WAV file
-            sample_rate, data = wavfile.read(input_wav)
-            # num_channels = data.shape[1] if len(data.shape) > 1 else 1
-            num_channels = 1
+        //    # Read WAV file
+        //    sample_rate, data = wavfile.read(input_wav)
+        //    # num_channels = data.shape[1] if len(data.shape) > 1 else 1
+        //    num_channels = 1
 
-            # Calculate the number of samples per time step
-            samples_per_step = int(sample_rate * time_step)
+        //    # Calculate the number of samples per time step
+        //    samples_per_step = int(sample_rate * time_step)
 
-            # Calculate the number of steps
-            num_steps = len(data) // samples_per_step
+        //    # Calculate the number of steps
+        //    num_steps = len(data) // samples_per_step
 
-            # Initialize the output data
-            output_data = []
+        //    # Initialize the output data
+        //    output_data = []
 
-            # Loop through time steps
-            for step in range(num_steps):
-                sample_index = step * samples_per_step
+        //    # Loop through time steps
+        //    for step in range(num_steps):
+        //        sample_index = step * samples_per_step
 
-                # Extract the sample data at the current time step
-                sample_data = data[sample_index : sample_index + samples_per_step]
+        //        # Extract the sample data at the current time step
+        //        sample_data = data[sample_index : sample_index + samples_per_step]
 
-                # Compute the FFT of the sample data for each channel
-                for channel in range(num_channels):
-                    fft_result = np.fft.fft(sample_data[:, channel])
-                    freqs = np.fft.fftfreq(len(fft_result), d=1/sample_rate)
+        //        # Compute the FFT of the sample data for each channel
+        //        for channel in range(num_channels):
+        //            fft_result = np.fft.fft(sample_data[:, channel])
+        //            freqs = np.fft.fftfreq(len(fft_result), d=1/sample_rate)
 
-                    # Extract amplitudes in the specified frequency range
-                    freq_indices = np.where((freqs >= freq_range[0]) & (freqs <= freq_range[1]))
-                    magnitudes = np.abs(fft_result[freq_indices])
-                    amplitudes_dB = 20 * np.log10(magnitudes)
+        //            # Extract amplitudes in the specified frequency range
+        //            freq_indices = np.where((freqs >= freq_range[0]) & (freqs <= freq_range[1]))
+        //            magnitudes = np.abs(fft_result[freq_indices])
+        //            amplitudes_dB = 20 * np.log10(magnitudes)
 
-                    # Convert amplitudes to integers before appending to the output data
-                    amplitudes_int = amplitudes_dB.astype(int)
-                    output_data.extend(np.abs(amplitudes_int))
+        //            # Convert amplitudes to integers before appending to the output data
+        //            amplitudes_int = amplitudes_dB.astype(int)
+        //            output_data.extend(np.abs(amplitudes_int))
 
-                # Add delimiter between time samples
-                if step < num_steps - 1:
-                    output_data.append('@')
+        //        # Add delimiter between time samples
+        //        if step < num_steps - 1:
+        //            output_data.append('@')
 
-            # Save the output data to a text file
-            np.savetxt(output_txt, output_data, delimiter=' ', fmt='%s')
-            ");
+        //    # Save the output data to a text file
+        //    np.savetxt(output_txt, output_data, delimiter=' ', fmt='%s')
+        //    ");
     }
 }

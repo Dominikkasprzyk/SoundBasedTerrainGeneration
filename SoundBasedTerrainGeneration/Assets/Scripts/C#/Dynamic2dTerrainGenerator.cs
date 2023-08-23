@@ -8,24 +8,23 @@ using UnityEngine;
 public class Dynamic2dTerrainGenerator : TerrainGeneration
 {
     private int numVertices;
-    new private int[,,] vertexDataArray;
-
     private bool simulationRunning = false;
     private AudioSource audioSource;
     [SerializeField] private AudioClip waveFile;
+    private int currentFrame = 0;
 
 
     override protected string txtDataFilePath
     {
         get
         {
-            return "amplitude_data.txt";
+            return "spectrogram.txt";
         }
     }
     override protected void Start()
     {
         RunPython.RunWaveformAndSpectogramGenerator(wavFilename);
-        vertexDataArray = ConvertTxtToArrayDynamic(Path.Combine(Application.dataPath, txtDataFilePath));
+        vertexDataArray = ConvertTxtToArray(Path.Combine(Application.dataPath, txtDataFilePath));
 
         audioSource = GetComponent<AudioSource>();
         audioSource.clip = waveFile;
@@ -36,9 +35,10 @@ public class Dynamic2dTerrainGenerator : TerrainGeneration
         simulationRunning = true;
         audioSource.Play();
 
-        for (int i = 0; i < vertexDataArray.GetLength(2); i++)
+        for (int i = 0; i < vertexDataArray.GetLength(1); i++)
         {
-            GenerateDynamicTerrainMesh(ExtractDynamicDetails(vertexDataArray), i);
+            currentFrame = i;
+            GenerateTerrainMesh(ExtractDetails(vertexDataArray));
             yield return new WaitForSeconds(0.1f);
         }
         simulationRunning = false;
@@ -56,21 +56,19 @@ public class Dynamic2dTerrainGenerator : TerrainGeneration
     override protected int[,] ConvertTxtToArray(string filePath)
     {
         string[] lines = File.ReadAllLines(filePath);
-        int numSamples = lines.Length;
-        int numChannels = lines[0].Split(' ').Length;
+        int numRows = lines.Length;
+        string[] firstRowValues = lines[0].Split(' ');
+        int numCols = firstRowValues.Length;
 
-        int[,] dataArray = new int[numSamples, numChannels];
+        int[,] dataArray = new int[numRows, numCols];
 
-        for (int i = 0; i < numSamples; i++)
+        for (int i = 0; i < numRows; i++)
         {
-            if (lines[i] != "@")
+            string[] values = lines[i].Split(' ');
+            for (int j = 0; j < numCols; j++)
             {
-                string[] samples = lines[i].Split(' ');
-                for (int j = 0; j < numChannels; j++)
-                {
-                    int value = int.Parse(samples[j]);
-                    dataArray[i, j] = value;
-                }
+                int value = int.Parse(values[j]);
+                dataArray[i, j] = value;
             }
         }
 
@@ -115,54 +113,6 @@ public class Dynamic2dTerrainGenerator : TerrainGeneration
         return dataArray;
     }
 
-    private void GenerateDynamicTerrainMesh(int[,,] dataArray, int timeFrame)
-    {
-        if (dataArray == null || dataArray.Length == 0)
-        {
-            Debug.LogError("Data is empty!");
-            return;
-        }
-
-        numVertices = dataArray.GetLength(0);
-
-        vertices = new Vector3[numVertices * 2];
-        triangles = new int[(numVertices - 1) * 6];
-
-        for (int i = 0; i < numVertices; i++)
-        {
-            float x = i * skipDetail;
-            float y = dataArray[i, 0, timeFrame];
-
-            if (x > vertexDataArray.GetLength(0))
-            {
-                x = vertexDataArray.GetLength(0) - 1;
-            }
-
-            vertices[i * 2] = new Vector3(x, y, 0);
-            vertices[i * 2 + 1] = new Vector3(x, 0, 0);
-
-            if (i < numVertices - 1)
-            {
-                int triangleIndex = i * 6;
-                triangles[triangleIndex] = i * 2;
-                triangles[triangleIndex + 1] = (i + 1) * 2;
-                triangles[triangleIndex + 2] = (i + 1) * 2 + 1;
-
-                triangles[triangleIndex + 3] = i * 2;
-                triangles[triangleIndex + 4] = (i + 1) * 2 + 1;
-                triangles[triangleIndex + 5] = i * 2 + 1;
-            }
-        }
-        if (!meshFilter)
-        {
-            meshFilter = GetComponent<MeshFilter>();
-            meshFilter.mesh = new Mesh();
-            meshFilter.mesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
-            meshFilter.mesh.MarkDynamic();
-        }
-        AdjustVertices();
-    }
-
     override protected void GenerateTerrainMesh(int[,] dataArray)
     {
         if (dataArray == null || dataArray.Length == 0)
@@ -179,7 +129,7 @@ public class Dynamic2dTerrainGenerator : TerrainGeneration
         for (int i = 0; i < numVertices; i++)
         {
             float x = i * skipDetail;
-            float y = dataArray[i, 0];
+            float y = dataArray[i, currentFrame] + 10;
 
             if (x > vertexDataArray.GetLength(0))
             {
@@ -218,17 +168,17 @@ public class Dynamic2dTerrainGenerator : TerrainGeneration
     override protected void AdjustVertices()
     {
         List<Vector3> adjsutedVertices = new List<Vector3>(vertices);
-        //for (int v = 0; v < adjsutedVertices.Count; v+=2)
-        //{
-        //    int newY = (int)Mathf.Lerp(0, vertices[v].y, steepness);
-        //    adjsutedVertices[v] = new Vector3(vertices[v].x, newY, vertices[v].z);
-        //}
+        for (int v = 0; v < adjsutedVertices.Count; v += 2)
+        {
+            int newY = (int)Mathf.Lerp(10, vertices[v].y, steepness);
+            adjsutedVertices[v] = new Vector3(vertices[v].x, newY, vertices[v].z);
+        }
 
-        //if (smoothingSteps > 0)
-        //{
-        //    List<Vector3> smoothedVertices = SmoothTerrainMesh(adjsutedVertices, smoothingSteps);
-        //    adjsutedVertices = smoothedVertices;
-        //}
+        if (smoothingSteps > 0)
+        {
+            List<Vector3> smoothedVertices = SmoothTerrainMesh(adjsutedVertices, smoothingSteps);
+            adjsutedVertices = smoothedVertices;
+        }
 
         meshFilter.mesh.triangles = null;
         meshFilter.mesh.SetVertices(adjsutedVertices);
@@ -261,49 +211,13 @@ public class Dynamic2dTerrainGenerator : TerrainGeneration
         return vertices;
     }
 
-    private int[,,] ExtractDynamicDetails(int[,,] original)
-    {
-        //int oldRowCount = original.GetLength(0);
-        //int oldColCount = original.GetLength(1);
-        //int oldTimeCount = original.GetLength(2);
-
-        //int newRowCount = 2 + ((oldRowCount - 2) / skipDetail);
-        //int newColCount = 2 + ((oldColCount - 2) / skipDetail);
-
-        //int[,,] result = new int[newRowCount, newColCount, oldTimeCount];
-
-        //int newRow = 0;
-        //for (int t = 0; t < oldTimeCount; t++)
-        //{
-        //    for (int i = 0; i < oldRowCount; i += skipDetail)
-        //    {
-        //        int newCol = 0;
-        //        for (int j = 0; j < oldColCount; j += skipDetail)
-        //        {
-        //            result[newRow, newCol, t] = original[i, j, t];
-        //            newCol++;
-        //        }
-        //        result[newRow, newColCount - 1, t] = original[i, oldColCount - 1, t];
-        //        newRow++;
-        //    }
-        //    int newColLast = 0;
-        //    for (int j = 0; j < oldColCount; j += skipDetail)
-        //    {
-        //        result[newRowCount - 1, newColLast, t] = original[oldRowCount - 1, j, t];
-        //        newColLast++;
-        //    }
-        //    result[newRowCount - 1, newColCount - 1, t] = original[oldRowCount - 1, oldColCount - 1, t];
-        //}
-        return original;
-    }
-
     override protected int[,] ExtractDetails(int[,] original)
     {
         int oldRowCount = original.GetLength(0);
         int oldColCount = original.GetLength(1);
 
         int newRowCount = 2 + ((oldRowCount - 2) / skipDetail);
-        int newColCount = 2 + ((oldColCount - 2) / skipDetail);
+        int newColCount = oldColCount;
 
         int[,] result = new int[newRowCount, newColCount];
 
@@ -311,7 +225,7 @@ public class Dynamic2dTerrainGenerator : TerrainGeneration
         for (int i = 0; i < oldRowCount; i += skipDetail)
         {
             int newCol = 0;
-            for (int j = 0; j < oldColCount; j += skipDetail)
+            for (int j = 0; j < oldColCount; j += 1)
             {
                 result[newRow, newCol] = original[i, j];
                 newCol++;
@@ -320,7 +234,7 @@ public class Dynamic2dTerrainGenerator : TerrainGeneration
             newRow++;
         }
         int newColLast = 0;
-        for (int j = 0; j < oldColCount; j += skipDetail)
+        for (int j = 0; j < oldColCount; j += 1)
         {
             result[newRowCount - 1, newColLast] = original[oldRowCount - 1, j];
             newColLast++;

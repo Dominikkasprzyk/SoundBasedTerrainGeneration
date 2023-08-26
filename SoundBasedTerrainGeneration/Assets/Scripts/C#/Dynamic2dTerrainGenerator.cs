@@ -30,7 +30,7 @@ public class Dynamic2dTerrainGenerator : TerrainGeneration
         audioSource.clip = waveFile;
     }
 
-    private IEnumerator Simulation()
+    private IEnumerator Simulation(float interval)
     {
         simulationRunning = true;
         audioSource.Play();
@@ -39,7 +39,7 @@ public class Dynamic2dTerrainGenerator : TerrainGeneration
         {
             currentFrame = i;
             GenerateTerrainMesh(ExtractDetails(vertexDataArray));
-            yield return new WaitForSeconds(0.1f);
+            yield return new WaitForSeconds(interval);
         }
         simulationRunning = false;
         //meshFilter.mesh = null;
@@ -49,7 +49,8 @@ public class Dynamic2dTerrainGenerator : TerrainGeneration
     {
         if(!simulationRunning)
         {
-            StartCoroutine(Simulation());
+            float interval = waveFile.length / vertexDataArray.GetLength(1);
+            StartCoroutine(Simulation(interval));
         }
     }
 
@@ -69,44 +70,6 @@ public class Dynamic2dTerrainGenerator : TerrainGeneration
             {
                 int value = int.Parse(values[j]);
                 dataArray[i, j] = value;
-            }
-        }
-
-        return dataArray;
-    }
-
-    private int[,,] ConvertTxtToArrayDynamic(string filePath)
-    {
-        string[] lines = File.ReadAllLines(filePath);
-        int numSamples = lines.Length;
-        int numChannels = lines[0].Split(' ').Length;
-        int timeSamples = 1;
-
-        for (int i = 0; i < numSamples; i++)
-        {
-            if (lines[i] == "@")
-            {
-                timeSamples++;
-            }
-        }
-
-        int numSmaplesInTimeMoment = (numSamples - timeSamples) / timeSamples;
-        int[,,] dataArray = new int[numSmaplesInTimeMoment, numChannels, timeSamples];
-
-        for (int t = 0; t < timeSamples; t++)
-        {
-            for (int i = 0; i < numSmaplesInTimeMoment; i++)
-            {
-                int currentLineIndex = (t * numSmaplesInTimeMoment) + t + i;
-                if (lines[currentLineIndex] != "@")
-                {
-                    string[] samples = lines[currentLineIndex].Split(' ');
-                    for (int j = 0; j < numChannels; j++)
-                    {
-                        int value = int.Parse(samples[j]);
-                        dataArray[i, j, t] = value;
-                    }
-                }
             }
         }
 
@@ -243,5 +206,4 @@ public class Dynamic2dTerrainGenerator : TerrainGeneration
 
         return result;
     }
-    
 }

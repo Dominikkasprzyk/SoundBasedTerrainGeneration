@@ -889,11 +889,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3b8865a14bb22b74383aac4cfa9b34e0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  wavFilename: wave2
+  wavFilename: wave3
   steepness: 1
-  smoothingSteps: 10
-  skipDetail: 100
-  waveFile: {fileID: 8300000, guid: 62bce08579f5a1a498095362d1e1553b, type: 3}
+  smoothingSteps: 0
+  skipDetail: 15
+  waveFile: {fileID: 8300000, guid: 3875b101e4414db42bc2f6a8dc11f633, type: 3}
 --- !u!82 &1188278055
 AudioSource:
   m_ObjectHideFlags: 0

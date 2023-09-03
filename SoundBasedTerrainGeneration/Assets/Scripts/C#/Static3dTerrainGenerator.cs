@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -128,6 +129,13 @@ public class Static3dTerrainGenerator : TerrainGeneration
         meshFilter.mesh.SetVertices(adjsutedVertices);
         meshFilter.mesh.SetTriangles(triangles, 0);
         meshFilter.mesh.RecalculateNormals();
+
+        List<int> heighList = new List<int>();
+        for (int i = 0; i < adjsutedVertices.Count; i += 1)
+        {
+            heighList.Add((int)adjsutedVertices[i].y);
+        }
+        //Debug.Log(CalculateStandardDeviation(heighList));
     }
 
     List<Vector3> SmoothTerrainMesh(List<Vector3> verts, int smoothIterations)
@@ -196,5 +204,38 @@ public class Static3dTerrainGenerator : TerrainGeneration
         result[newRowCount - 1,newColCount - 1] = original[oldRowCount - 1,oldColCount - 1];
 
         return result;
+    }
+
+    private double CalculateStandardDeviation(List<int> numbers)
+    {
+        int count = numbers.Count;
+        if (count <= 1)
+        {
+            return 0; // Nie mo¿na obliczyæ odchylenia standardowego dla jednej lub mniej wartoœci.
+        }
+
+        double mean = CalculateMean(numbers);
+        double sumOfSquaredDifferences = 0;
+
+        foreach (int number in numbers)
+        {
+            double difference = number - mean;
+            sumOfSquaredDifferences += difference * difference;
+        }
+
+        double variance = sumOfSquaredDifferences / (count - 1);
+        double standardDeviation = Math.Sqrt(variance);
+
+        return standardDeviation;
+    }
+
+    private double CalculateMean(List<int> numbers)
+    {
+        int sum = 0;
+        foreach (int number in numbers)
+        {
+            sum += number;
+        }
+        return (double)sum / numbers.Count;
     }
 }

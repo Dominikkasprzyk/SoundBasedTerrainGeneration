@@ -35,16 +35,12 @@ public class RunPython
 
                     return audio_array / np.iinfo(audio_array.dtype).max
 
-            def save_int_array_to_txt(int_array, txt_file_path):
-                with open(txt_file_path, 'w') as txt_file:
-                    txt_file.write(' '.join(str(val) for val in int_array))
             " + $@"
 
             wave_file_path = os.getcwd() + '/Assets/' + '{filename}.wav'
             waveform_int_array = convert_wave_to_int_array(wave_file_path)
 
             txt_file_path = os.getcwd() + '/Assets/' + 'waveform.txt'
-            # save_int_array_to_txt(waveform_int_array, txt_file_path)
             audio_array_int = (waveform_int_array * np.iinfo(np.int16).max).astype(np.int16)
             np.savetxt(txt_file_path, audio_array_int, fmt='%d', delimiter=' ')
 
@@ -54,11 +50,11 @@ public class RunPython
                                 sample_width = audio_file.getsampwidth()
                                 frame_rate = audio_file.getframerate()
             time_axis = np.arange(0, num_frames) / frame_rate
-            # plt.plot(time_axis, waveform_int_array)
-            # plt.title('Waveform Plot')
-            # plt.xlabel('Time (s)')
-            # plt.ylabel('Amplitude')
-            # plt.show()
+            #plt.plot(time_axis, waveform_int_array, linewidth=0.5)
+            #plt.title('Waveform Plot')
+            #plt.xlabel('Time (s)')
+            #plt.ylabel('Amplitude')
+            #plt.show()
         
         ");
 
@@ -105,11 +101,11 @@ public class RunPython
             np.savetxt(txt_filename, reversed_spectrogram, fmt='%d')
 
             # Display the grayscale spectrogram
-            # plt.figure(figsize=(10, 6))
-            # librosa.display.specshow(integer_spectrogram, cmap='gray', sr=sample_rate, x_axis='time', y_axis='log')
-            # plt.colorbar(format='%+2.0f dB')
-            # plt.title('Grayscale Spectrogram')
-            # plt.show()
+            plt.figure(figsize=(10, 6))
+            librosa.display.specshow(integer_spectrogram, cmap='gray', sr=sample_rate, x_axis='time', y_axis='log')
+            plt.colorbar(format='%+2.0f dB')
+            plt.title('Grayscale Spectrogram')
+            #plt.show()
         ");
 
         //PythonRunner.RunString($@"
